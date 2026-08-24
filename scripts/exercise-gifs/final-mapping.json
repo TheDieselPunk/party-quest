@@ -1,0 +1,282 @@
+{
+  "machine-chest-press": {
+    "file": "0577-T0yTjgW.gif",
+    "name": "lever chest press",
+    "equipment": "leverage machine"
+  },
+  "db-flat-press": {
+    "file": "0289-SpYC0Kp.gif",
+    "name": "dumbbell bench press",
+    "equipment": "dumbbell"
+  },
+  "incline-db-press": {
+    "file": "0314-ns0SIbU.gif",
+    "name": "dumbbell incline bench press",
+    "equipment": "dumbbell"
+  },
+  "smith-bench": {
+    "file": "0748-trqKQv2.gif",
+    "name": "smith bench press",
+    "equipment": "smith machine"
+  },
+  "machine-incline-press": {
+    "file": "1299-jHAnWmT.gif",
+    "name": "lever incline chest press",
+    "equipment": "leverage machine"
+  },
+  "cable-fly": {
+    "file": "0158-7saC5zz.gif",
+    "name": "cable decline fly",
+    "equipment": "cable"
+  },
+  "db-fly": {
+    "file": "0308-yz9nUhF.gif",
+    "name": "dumbbell fly",
+    "equipment": "dumbbell"
+  },
+  "pushup": {
+    "file": "0662-I4hDWkc.gif",
+    "name": "push-up",
+    "equipment": "body weight"
+  },
+  "lat-pulldown": {
+    "file": "2330-LEprlgG.gif",
+    "name": "cable lat pulldown full range of motion",
+    "equipment": "cable"
+  },
+  "seated-row": {
+    "file": "1350-7I6LNUG.gif",
+    "name": "lever seated row",
+    "equipment": "leverage machine"
+  },
+  "cable-row": {
+    "file": "0159-kesXOpB.gif",
+    "name": "cable decline seated wide-grip row",
+    "equipment": "cable"
+  },
+  "db-row": {
+    "file": "0292-C0MA9bC.gif",
+    "name": "dumbbell one arm bent-over row",
+    "equipment": "dumbbell"
+  },
+  "smith-row": {
+    "file": "1359-ZX9UZmj.gif",
+    "name": "smith bent over row",
+    "equipment": "smith machine"
+  },
+  "cable-straight-arm": {
+    "file": "0238-x69MAlq.gif",
+    "name": "cable straight arm pulldown",
+    "equipment": "cable"
+  },
+  "machine-shoulder-press": {
+    "file": "0603-67n3r98.gif",
+    "name": "lever shoulder press",
+    "equipment": "leverage machine"
+  },
+  "db-shoulder-press": {
+    "file": "0405-znQUdHY.gif",
+    "name": "dumbbell seated shoulder press",
+    "equipment": "dumbbell"
+  },
+  "smith-ohp": {
+    "file": "0765-xUwnBMT.gif",
+    "name": "smith seated shoulder press",
+    "equipment": "smith machine"
+  },
+  "db-lateral-raise": {
+    "file": "0334-DsgkuIt.gif",
+    "name": "dumbbell lateral raise",
+    "equipment": "dumbbell"
+  },
+  "cable-lateral": {
+    "file": "0178-goJ6ezq.gif",
+    "name": "cable lateral raise",
+    "equipment": "cable"
+  },
+  "db-curl": {
+    "file": "0294-NbVPDMW.gif",
+    "name": "dumbbell biceps curl",
+    "equipment": "dumbbell"
+  },
+  "ez-bar-curl": {
+    "file": "0447-6TG6x2w.gif",
+    "name": "ez barbell curl",
+    "equipment": "ez barbell"
+  },
+  "cable-curl": {
+    "file": "0868-G08RZcQ.gif",
+    "name": "cable curl",
+    "equipment": "cable"
+  },
+  "cable-pushdown": {
+    "file": "1723-qRZ5S1N.gif",
+    "name": "cable one arm tricep pushdown",
+    "equipment": "cable"
+  },
+  "db-overhead-ext": {
+    "file": "0362-nAuHPcD.gif",
+    "name": "dumbbell one arm triceps extension (on bench)",
+    "equipment": "dumbbell"
+  },
+  "bench-dip": {
+    "file": "0129-RrLske5.gif",
+    "name": "bench dip (knees bent)",
+    "equipment": "body weight"
+  },
+  "ez-bar-skullcrusher": {
+    "file": "0035-LMGXZn8.gif",
+    "name": "barbell decline close grip to skull press",
+    "equipment": "barbell"
+  },
+  "leg-press": {
+    "file": "2287-V07qpXy.gif",
+    "name": "lever alternate leg press",
+    "equipment": "leverage machine"
+  },
+  "barbell-back-squat": {
+    "file": "0043-qXTaZnJ.gif",
+    "name": "barbell full squat",
+    "equipment": "barbell"
+  },
+  "goblet-squat": {
+    "file": "0534-ZA8b5hc.gif",
+    "name": "kettlebell goblet squat",
+    "equipment": "kettlebell"
+  },
+  "leg-extension": {
+    "file": "0585-my33uHU.gif",
+    "name": "lever leg extension",
+    "equipment": "leverage machine"
+  },
+  "db-lunge": {
+    "file": "0336-RRWFUcw.gif",
+    "name": "dumbbell lunge",
+    "equipment": "dumbbell"
+  },
+  "leg-curl": {
+    "file": "0582-nnmCTLN.gif",
+    "name": "lever kneeling leg curl",
+    "equipment": "leverage machine"
+  },
+  "smith-rdl": {
+    "file": "0752-UfePqpx.gif",
+    "name": "smith deadlift",
+    "equipment": "smith machine"
+  },
+  "db-rdl": {
+    "file": "0432-5eLRITT.gif",
+    "name": "dumbbell stiff leg deadlift",
+    "equipment": "dumbbell"
+  },
+  "hip-abduction": {
+    "file": "0597-CHpahtl.gif",
+    "name": "lever seated hip abduction",
+    "equipment": "leverage machine"
+  },
+  "hip-adduction": {
+    "file": "0598-oHsrypV.gif",
+    "name": "lever seated hip adduction",
+    "equipment": "leverage machine"
+  },
+  "calf-press": {
+    "file": "2289-7B4F5nZ.gif",
+    "name": "lever calf press",
+    "equipment": "leverage machine"
+  },
+  "smith-calf": {
+    "file": "0773-6MaEjVA.gif",
+    "name": "smith standing leg calf raise",
+    "equipment": "smith machine"
+  },
+  "ab-crunch": {
+    "file": "0175-WW95auq.gif",
+    "name": "cable kneeling crunch",
+    "equipment": "cable"
+  },
+  "low-back-ext": {
+    "file": "0489-zhMwOwE.gif",
+    "name": "hyperextension",
+    "equipment": "body weight"
+  },
+  "ab-wheel": {
+    "file": "2204-XeMvLgE.gif",
+    "name": "roller body saw",
+    "equipment": "roller"
+  },
+  "plank": {
+    "file": "2135-VBAWRPG.gif",
+    "name": "weighted front plank",
+    "equipment": "weighted"
+  },
+  "decline-situp": {
+    "file": "0001-2gPfomN.gif",
+    "name": "3/4 sit-up",
+    "equipment": "body weight"
+  },
+  "cable-woodchop": {
+    "file": "0243-aVs3BR3.gif",
+    "name": "cable twist",
+    "equipment": "cable"
+  },
+  "stairmaster-intervals": {
+    "file": "2311-j9Q5crt.gif",
+    "name": "walking on stepmill",
+    "equipment": "stepmill machine"
+  },
+  "treadmill-intervals": {
+    "file": "3638-PrQbjvB.gif",
+    "name": "push to run",
+    "equipment": "body weight"
+  },
+  "bike-intervals": {
+    "file": "2138-H1PESYI.gif",
+    "name": "stationary bike run v. 3",
+    "equipment": "stationary bike"
+  },
+  "battle-ropes": {
+    "file": "0128-RJa4tCo.gif",
+    "name": "battling ropes",
+    "equipment": "rope"
+  },
+  "kb-swing": {
+    "file": "0549-UHJlbu3.gif",
+    "name": "kettlebell swing",
+    "equipment": "kettlebell"
+  },
+  "med-ball-slam": {
+    "file": "0640-jCrtE9b.gif",
+    "name": "one arm slam (with medicine ball)",
+    "equipment": "medicine ball"
+  },
+  "band-row": {
+    "file": "3144-Nu7jqFE.gif",
+    "name": "resistance band seated straight back row",
+    "equipment": "resistance band"
+  },
+  "band-pushdown": {
+    "file": "0998-obe5LMq.gif",
+    "name": "band side triceps extension",
+    "equipment": "band"
+  },
+  "band-curl": {
+    "file": "3123-XFc3vpY.gif",
+    "name": "resistance band seated biceps curl",
+    "equipment": "resistance band"
+  },
+  "band-lateral": {
+    "file": "0977-sTg7iys.gif",
+    "name": "band front lateral raise",
+    "equipment": "band"
+  },
+  "band-abduction": {
+    "file": "3006-0xDpB4L.gif",
+    "name": "resistance band seated hip abduction",
+    "equipment": "resistance band"
+  },
+  "sandbag-rdl": {
+    "file": "0115-JrOHAZc.gif",
+    "name": "barbell stiff leg good morning",
+    "equipment": "barbell"
+  }
+}

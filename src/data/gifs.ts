@@ -1,0 +1,67 @@
+// AUTO-GENERATED — exercise demo GIFs mapped to our exercise ids.
+// Source: github.com/hasaneyldrm/exercises-dataset (animations bundled locally).
+// Regenerate via scripts/install-gifs.mjs. Do not edit by hand.
+
+export const EXERCISE_GIF: Record<string, string> = {
+  "machine-chest-press": "/exercise-gifs/machine-chest-press.gif",
+  "db-flat-press": "/exercise-gifs/db-flat-press.gif",
+  "incline-db-press": "/exercise-gifs/incline-db-press.gif",
+  "smith-bench": "/exercise-gifs/smith-bench.gif",
+  "machine-incline-press": "/exercise-gifs/machine-incline-press.gif",
+  "cable-fly": "/exercise-gifs/cable-fly.gif",
+  "db-fly": "/exercise-gifs/db-fly.gif",
+  "pushup": "/exercise-gifs/pushup.gif",
+  "lat-pulldown": "/exercise-gifs/lat-pulldown.gif",
+  "seated-row": "/exercise-gifs/seated-row.gif",
+  "cable-row": "/exercise-gifs/cable-row.gif",
+  "db-row": "/exercise-gifs/db-row.gif",
+  "smith-row": "/exercise-gifs/smith-row.gif",
+  "cable-straight-arm": "/exercise-gifs/cable-straight-arm.gif",
+  "machine-shoulder-press": "/exercise-gifs/machine-shoulder-press.gif",
+  "db-shoulder-press": "/exercise-gifs/db-shoulder-press.gif",
+  "smith-ohp": "/exercise-gifs/smith-ohp.gif",
+  "db-lateral-raise": "/exercise-gifs/db-lateral-raise.gif",
+  "cable-lateral": "/exercise-gifs/cable-lateral.gif",
+  "db-curl": "/exercise-gifs/db-curl.gif",
+  "ez-bar-curl": "/exercise-gifs/ez-bar-curl.gif",
+  "cable-curl": "/exercise-gifs/cable-curl.gif",
+  "cable-pushdown": "/exercise-gifs/cable-pushdown.gif",
+  "db-overhead-ext": "/exercise-gifs/db-overhead-ext.gif",
+  "bench-dip": "/exercise-gifs/bench-dip.gif",
+  "ez-bar-skullcrusher": "/exercise-gifs/ez-bar-skullcrusher.gif",
+  "leg-press": "/exercise-gifs/leg-press.gif",
+  "barbell-back-squat": "/exercise-gifs/barbell-back-squat.gif",
+  "goblet-squat": "/exercise-gifs/goblet-squat.gif",
+  "leg-extension": "/exercise-gifs/leg-extension.gif",
+  "db-lunge": "/exercise-gifs/db-lunge.gif",
+  "leg-curl": "/exercise-gifs/leg-curl.gif",
+  "smith-rdl": "/exercise-gifs/smith-rdl.gif",
+  "db-rdl": "/exercise-gifs/db-rdl.gif",
+  "hip-abduction": "/exercise-gifs/hip-abduction.gif",
+  "hip-adduction": "/exercise-gifs/hip-adduction.gif",
+  "calf-press": "/exercise-gifs/calf-press.gif",
+  "smith-calf": "/exercise-gifs/smith-calf.gif",
+  "ab-crunch": "/exercise-gifs/ab-crunch.gif",
+  "low-back-ext": "/exercise-gifs/low-back-ext.gif",
+  "ab-wheel": "/exercise-gifs/ab-wheel.gif",
+  "plank": "/exercise-gifs/plank.gif",
+  "decline-situp": "/exercise-gifs/decline-situp.gif",
+  "cable-woodchop": "/exercise-gifs/cable-woodchop.gif",
+  "stairmaster-intervals": "/exercise-gifs/stairmaster-intervals.gif",
+  "treadmill-intervals": "/exercise-gifs/treadmill-intervals.gif",
+  "bike-intervals": "/exercise-gifs/bike-intervals.gif",
+  "battle-ropes": "/exercise-gifs/battle-ropes.gif",
+  "kb-swing": "/exercise-gifs/kb-swing.gif",
+  "med-ball-slam": "/exercise-gifs/med-ball-slam.gif",
+  "band-row": "/exercise-gifs/band-row.gif",
+  "band-pushdown": "/exercise-gifs/band-pushdown.gif",
+  "band-curl": "/exercise-gifs/band-curl.gif",
+  "band-lateral": "/exercise-gifs/band-lateral.gif",
+  "band-abduction": "/exercise-gifs/band-abduction.gif",
+  "sandbag-rdl": "/exercise-gifs/sandbag-rdl.gif"
+}
+
+export function gifFor(exerciseId: string): string | undefined {
+  const p = EXERCISE_GIF[exerciseId]
+  return p ? import.meta.env.BASE_URL + p.replace(/^\//, '') : undefined
+}

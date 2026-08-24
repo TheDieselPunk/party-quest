@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2016"/>
+      <stop offset="1" stop-color="#12100c"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c874"/>
+      <stop offset="1" stop-color="#c9932f"/>
+    </linearGradient>
+    <linearGradient id="blade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3ead6"/>
+      <stop offset="1" stop-color="#b9ac91"/>
+    </linearGradient>
+  </defs>
+
+  <!-- full-bleed background (maskable-safe) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- shield -->
+  <path d="M256 70 L400 122 V262 C400 356 338 410 256 448 C174 410 112 356 112 262 V122 Z"
+        fill="#1b1610" stroke="url(#gold)" stroke-width="12"/>
+
+  <!-- sword: blade -->
+  <path d="M256 138 L272 168 V300 H240 V168 Z" fill="url(#blade)" stroke="#8a7a52" stroke-width="3"/>
+  <!-- crossguard -->
+  <rect x="196" y="300" width="120" height="18" rx="6" fill="url(#gold)"/>
+  <!-- handle -->
+  <rect x="247" y="318" width="18" height="46" rx="6" fill="#5b4a2a"/>
+  <!-- pommel -->
+  <circle cx="256" cy="372" r="13" fill="url(#gold)"/>
+</svg>
