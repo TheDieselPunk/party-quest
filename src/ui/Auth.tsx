@@ -19,7 +19,10 @@ export function Auth({ onOffline }: { onOffline: () => void }) {
     try {
       if (mode === 'signup') await signUp(email, password)
       else await signIn(email, password)
-      // session change is picked up by useAuth() in App
+      // Reload so the client hydrates the new session cleanly and the initial
+      // cloud pull runs at mount — avoids a race where the first authed request
+      // fires before the session is attached.
+      window.location.reload()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Something went wrong')
       setBusy(false)

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { useProfiles, useCurrentProfile } from './store/hooks'
 import { useSession } from './store/session'
 import { useAuth } from './cloud/auth'
-import { initSync, clearSync } from './cloud/sync'
+import { initSync, clearSync, useSyncStatus } from './cloud/sync'
 import { Auth } from './ui/Auth'
 import { Onboarding } from './ui/Onboarding'
 import { Dashboard } from './ui/Dashboard'
@@ -46,6 +46,7 @@ export default function App() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { session, ready, cloudEnabled } = useAuth()
+  const syncStatus = useSyncStatus()
 
   // Start/stop cloud sync with the auth session.
   const userId = session?.user?.id
@@ -68,6 +69,11 @@ export default function App() {
   }
   if (cloudEnabled && !session && !offline) {
     return <div className="app-shell"><Auth onOffline={() => setOffline(true)} /></div>
+  }
+  // Signed in: wait for the first cloud pull so returning users don't flash the
+  // onboarding screen before their data restores.
+  if (cloudEnabled && session && !syncStatus.initialSyncDone) {
+    return <div className="app-shell"><div className="screen muted">Restoring your progress…</div></div>
   }
 
   if (profiles === undefined || profile === undefined) {

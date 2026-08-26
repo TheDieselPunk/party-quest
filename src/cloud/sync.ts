@@ -12,6 +12,7 @@ import type { Character, CompletedSession, Profile } from '../domain/types'
 
 type Kind = 'profiles' | 'characters' | 'sessions'
 let currentUserId: string | null = null
+let initialSyncDone = false
 
 /** Stamp a record with the current time for last-write-wins ordering. */
 export function stampNow<T extends object>(o: T): T {
@@ -20,15 +21,15 @@ export function stampNow<T extends object>(o: T): T {
 }
 
 // --- status (for the Settings sync indicator) ------------------------------
-export interface SyncStatus { pending: number; online: boolean; signedIn: boolean }
+export interface SyncStatus { pending: number; online: boolean; signedIn: boolean; initialSyncDone: boolean }
 const listeners = new Set<(s: SyncStatus) => void>()
 async function currentStatus(): Promise<SyncStatus> {
-  return { pending: await db.outbox.count(), online: navigator.onLine, signedIn: !!currentUserId }
+  return { pending: await db.outbox.count(), online: navigator.onLine, signedIn: !!currentUserId, initialSyncDone }
 }
 function emitStatus(): void { void currentStatus().then((s) => listeners.forEach((l) => l(s))) }
 
 export function useSyncStatus(): SyncStatus {
-  const [s, setS] = useState<SyncStatus>({ pending: 0, online: navigator.onLine, signedIn: !!currentUserId })
+  const [s, setS] = useState<SyncStatus>({ pending: 0, online: navigator.onLine, signedIn: !!currentUserId, initialSyncDone })
   useEffect(() => {
     const l = (x: SyncStatus) => setS(x)
     listeners.add(l)
@@ -150,17 +151,27 @@ function onFocus() { void flushOutbox() }
 export async function initSync(userId: string): Promise<void> {
   if (!cloudEnabled || !supabase) return
   currentUserId = userId
+  initialSyncDone = false
   window.addEventListener('online', onOnline)
   window.addEventListener('focus', onFocus)
   emitStatus()
-  const index = await pullAll(userId)
-  await migrateLocal(index)
-  await flushOutbox()
-  emitStatus()
+  try {
+    // Ensure the client has hydrated the session before authenticated reads.
+    await supabase.auth.getSession()
+    const index = await pullAll(userId)
+    await migrateLocal(index)
+    await flushOutbox()
+  } catch {
+    // network hiccup — proceed with local data; sync retries on focus/online
+  } finally {
+    initialSyncDone = true
+    emitStatus()
+  }
 }
 
 export function clearSync(): void {
   currentUserId = null
+  initialSyncDone = false
   window.removeEventListener('online', onOnline)
   window.removeEventListener('focus', onFocus)
   emitStatus()
