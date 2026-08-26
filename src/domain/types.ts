@@ -221,6 +221,9 @@ export interface Profile {
   /** Rotation bookkeeping: which day of the split to generate next. */
   dayIndex: number
   weekStart?: number
+
+  /** Last local mutation time (ms); used for cloud last-write-wins sync. */
+  updatedAt?: number
 }
 
 // --- Logged data ------------------------------------------------------------
@@ -250,6 +253,7 @@ export interface CompletedSession {
   goal: Goal
   exercises: LoggedExercise[]
   durationSeconds?: number
+  updatedAt?: number
 }
 
 // --- RPG --------------------------------------------------------------------
@@ -300,4 +304,5 @@ export interface Character {
   bests: Record<string, { load: number; reps: number; est1rm: number }>
   streak: number
   lastSessionDate?: number
+  updatedAt?: number
 }

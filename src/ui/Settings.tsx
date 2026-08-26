@@ -7,12 +7,17 @@ import { ALL_MUSCLES, MUSCLE_LABEL } from '../domain/types'
 import { saveProfile, deleteProfile } from '../db/repo'
 import { useSession } from '../store/session'
 import { useProfiles } from '../store/hooks'
+import { useAuth, signOut } from '../cloud/auth'
+import { useSyncStatus } from '../cloud/sync'
 import { Chips, Field, Screen } from './common'
 
 export function Settings({ profile }: { profile: Profile }) {
   const navigate = useNavigate()
   const profiles = useProfiles() ?? []
   const setCurrent = useSession((s) => s.setCurrent)
+  const setOffline = useSession((s) => s.setOffline)
+  const { session, cloudEnabled } = useAuth()
+  const sync = useSyncStatus()
   const [p, setP] = useState<Profile>(profile)
   const [saved, setSaved] = useState(false)
 
@@ -39,6 +44,28 @@ export function Settings({ profile }: { profile: Profile }) {
   return (
     <Screen eyebrow="Adjust your path" title="Settings"
       action={<button className="btn btn-sm btn-primary" onClick={save}>{saved ? 'Saved ✓' : 'Save'}</button>}>
+      {cloudEnabled && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="eyebrow">Account</div>
+          {session ? (
+            <>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14 }}>{session.user.email}</span>
+                <span className="tag" style={{ color: sync.online ? 'var(--moss)' : 'var(--text-dim)' }}>
+                  {sync.pending > 0 ? `${sync.pending} to sync` : sync.online ? 'Backed up ✓' : 'Offline'}
+                </span>
+              </div>
+              <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }}
+                onClick={async () => { await signOut(); setOffline(false) }}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <div className="muted" style={{ fontSize: 13 }}>Not signed in — data is only on this device.</div>
+              <button className="btn btn-primary btn-sm" style={{ marginTop: 10 }} onClick={() => setOffline(false)}>Sign in to back up</button>
+            </>
+          )}
+        </div>
+      )}
       <div className="card center-col">
         <Field label="Character name">
           <input value={p.characterName} onChange={(e) => { set('characterName', e.target.value); set('name', e.target.value) }} />

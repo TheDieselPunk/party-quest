@@ -12,26 +12,36 @@ import {
 import { EXERCISES_BY_ID } from '../data/exercises'
 import { EQUIPMENT_BY_ID, modeOf } from '../data/equipment'
 import { repPrescription, recommendLoad } from '../engine'
+import { queuePush, stampNow } from '../cloud/sync'
 
 // --- profiles ---------------------------------------------------------------
 export async function createProfile(init: Partial<Profile>): Promise<Profile> {
-  const profile = makeDefaultProfile(init)
+  const profile = stampNow(makeDefaultProfile(init))
+  const character = stampNow(emptyCharacter(profile.id))
   await db.profiles.put(profile)
-  await db.characters.put(emptyCharacter(profile.id))
+  await db.characters.put(character)
+  queuePush('profiles', profile.id)
+  queuePush('characters', profile.id)
   return profile
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
+  stampNow(profile)
   await db.profiles.put(profile)
+  queuePush('profiles', profile.id)
 }
 
 export async function deleteProfile(id: string): Promise<void> {
+  const sessionIds = (await db.sessions.where('profileId').equals(id).primaryKeys()) as string[]
   await db.transaction('rw', db.profiles, db.characters, db.sessions, db.active, async () => {
     await db.profiles.delete(id)
     await db.characters.delete(id)
     await db.active.delete(id)
     await db.sessions.where('profileId').equals(id).delete()
   })
+  queuePush('profiles', id, 'delete')
+  queuePush('characters', id, 'delete')
+  for (const sid of sessionIds) queuePush('sessions', sid, 'delete')
 }
 
 // --- history ----------------------------------------------------------------
@@ -136,7 +146,7 @@ export async function finishWorkout(
     sets: active.logs[i],
   }))
 
-  const session: CompletedSession = {
+  const session: CompletedSession = stampNow({
     id: crypto.randomUUID(),
     profileId: profile.id,
     planId: active.plan.id,
@@ -145,17 +155,22 @@ export async function finishWorkout(
     goal: active.plan.goal,
     exercises,
     durationSeconds: Math.round((Date.now() - active.startedAt) / 1000),
-  }
+  })
 
   const character = (await db.characters.get(profile.id)) ?? emptyCharacter(profile.id)
   const rewards = applySession(character, session)
+  stampNow(rewards.character)
+  const now = Date.now()
 
   await db.transaction('rw', db.sessions, db.characters, db.active, db.profiles, async () => {
     await db.sessions.put(session)
     await db.characters.put(rewards.character)
     await db.active.delete(profile.id)
-    await db.profiles.update(profile.id, { dayIndex: profile.dayIndex + 1 })
+    await db.profiles.update(profile.id, { dayIndex: profile.dayIndex + 1, updatedAt: now })
   })
 
+  queuePush('sessions', session.id)
+  queuePush('characters', profile.id)
+  queuePush('profiles', profile.id)
   return rewards
 }

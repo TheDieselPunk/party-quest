@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useProfiles, useCurrentProfile } from './store/hooks'
 import { useSession } from './store/session'
+import { useAuth } from './cloud/auth'
+import { initSync, clearSync } from './cloud/sync'
+import { Auth } from './ui/Auth'
 import { Onboarding } from './ui/Onboarding'
 import { Dashboard } from './ui/Dashboard'
 import { WorkoutPlayer } from './ui/WorkoutPlayer'
@@ -38,8 +41,18 @@ export default function App() {
   const profiles = useProfiles()
   const profile = useCurrentProfile()
   const setCurrent = useSession((s) => s.setCurrent)
+  const offline = useSession((s) => s.offline)
+  const setOffline = useSession((s) => s.setOffline)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { session, ready, cloudEnabled } = useAuth()
+
+  // Start/stop cloud sync with the auth session.
+  const userId = session?.user?.id
+  useEffect(() => {
+    if (userId) void initSync(userId)
+    else clearSync()
+  }, [userId])
 
   // Auto-select a profile if none is chosen but some exist (e.g. after delete).
   useEffect(() => {
@@ -47,6 +60,15 @@ export default function App() {
       setCurrent(profiles[0].id)
     }
   }, [profiles, profile, setCurrent])
+
+  // Cloud sign-in gate: show it when cloud is configured, we're not signed in,
+  // and the user hasn't chosen to continue offline.
+  if (cloudEnabled && !ready) {
+    return <div className="app-shell"><div className="screen muted">Summoning…</div></div>
+  }
+  if (cloudEnabled && !session && !offline) {
+    return <div className="app-shell"><Auth onOffline={() => setOffline(true)} /></div>
+  }
 
   if (profiles === undefined || profile === undefined) {
     return <div className="app-shell"><div className="screen muted">Summoning…</div></div>

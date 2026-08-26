@@ -25,3 +25,6 @@ dist-ssr
 
 # build artifacts
 *.zip
+
+# local env
+.env

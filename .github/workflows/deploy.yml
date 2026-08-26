@@ -29,6 +29,9 @@ jobs:
         env:
           # Served from https://<user>.github.io/party-quest/
           VITE_BASE: /party-quest/
+          # Empty until set as repo secrets → app runs local-only (no breakage).
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - name: SPA fallback for deep links
         run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
