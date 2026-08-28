@@ -526,7 +526,17 @@ export const EXERCISES: Exercise[] = [
     muscles: [],
     loadBasis: 'bodyweight',
     cues: 'Hard/easy intervals. Log total minutes as "reps".',
-    altIds: ['stairmaster-intervals', 'treadmill-intervals'],
+    altIds: ['stairmaster-intervals', 'treadmill-intervals', 'elliptical-intervals'],
+  },
+  {
+    id: 'elliptical-intervals',
+    name: 'Elliptical Intervals',
+    equipmentId: 'elliptical', modeId: undefined,
+    kind: 'conditioning', pattern: 'conditioning', repClass: 'conditioning',
+    muscles: [],
+    loadBasis: 'bodyweight',
+    cues: 'Alternate hard/easy on the elliptical. Log total minutes as "reps".',
+    altIds: ['treadmill-intervals', 'bike-intervals', 'stairmaster-intervals'],
   },
   {
     id: 'battle-ropes',

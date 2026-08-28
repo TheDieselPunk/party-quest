@@ -1,5 +1,5 @@
 import type {
-  CompletedSession, LoggedExercise, PrescribedExercise, Profile,
+  Character, CompletedSession, LoggedExercise, PrescribedExercise, Profile,
 } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
 import { logsFromPlan } from '../domain/active'
@@ -47,6 +47,40 @@ export async function deleteProfile(id: string): Promise<void> {
 // --- history ----------------------------------------------------------------
 export async function sessionsFor(profileId: string): Promise<CompletedSession[]> {
   return db.sessions.where('profileId').equals(profileId).reverse().sortBy('date')
+}
+
+/**
+ * Bulk-import historical sessions (e.g. migrating from another app). Skips
+ * duplicates, then rebuilds the RPG character from the full history in
+ * chronological order so levels/PRs/streak reflect the imported data.
+ */
+export async function importSessions(
+  profile: Profile,
+  sessions: CompletedSession[],
+): Promise<{ added: number; skipped: number; character: Character }> {
+  const existing = await db.sessions.where('profileId').equals(profile.id).toArray()
+  const seen = new Set(existing.map((s) => `${s.date}|${s.title}`))
+  let added = 0
+  let skipped = 0
+  for (const s of sessions) {
+    const key = `${s.date}|${s.title}`
+    if (seen.has(key)) { skipped++; continue }
+    stampNow(s)
+    await db.sessions.put(s)
+    queuePush('sessions', s.id)
+    seen.add(key)
+    added++
+  }
+
+  const all = (await db.sessions.where('profileId').equals(profile.id).toArray())
+    .sort((a, b) => a.date - b.date)
+  let character = emptyCharacter(profile.id)
+  for (const s of all) character = applySession(character, s).character
+  stampNow(character)
+  await db.characters.put(character)
+  queuePush('characters', profile.id)
+
+  return { added, skipped, character }
 }
 
 // --- workout generation & lifecycle ----------------------------------------

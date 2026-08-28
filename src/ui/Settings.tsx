@@ -9,6 +9,7 @@ import { useSession } from '../store/session'
 import { useProfiles } from '../store/hooks'
 import { useAuth, signOut } from '../cloud/auth'
 import { useSyncStatus } from '../cloud/sync'
+import { ImportHistory } from './ImportHistory'
 import { Chips, Field, Screen } from './common'
 
 export function Settings({ profile }: { profile: Profile }) {
@@ -146,6 +147,8 @@ export function Settings({ profile }: { profile: Profile }) {
           <button className="chip" aria-pressed={p.units === 'kg'} onClick={() => set('units', p.units === 'kg' ? 'lb' : 'kg')}>Units: {p.units}</button>
         </div>
       </div>
+
+      <ImportHistory profile={profile} />
 
       <button className="btn btn-primary btn-block" style={{ marginTop: 14 }} onClick={save}>{saved ? 'Saved ✓' : 'Save changes'}</button>
       <button className="btn btn-ghost btn-block" style={{ marginTop: 8, color: 'var(--danger)' }} onClick={remove}>Delete this adventurer</button>
