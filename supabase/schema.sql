@@ -131,3 +131,26 @@ create policy party_members_read on public.party_members
 drop policy if exists party_members_delete on public.party_members;
 create policy party_members_delete on public.party_members
   for delete using (user_id = auth.uid());
+
+-- ---------- invite-code gate (Before User Created auth hook) ----------
+-- Rejects any sign-up whose invite_code metadata isn't the shared secret.
+-- The client passes options.data.invite_code; the code lives ONLY here (server).
+-- After running this, enable it in the dashboard:
+--   Authentication → Hooks → Before User Created → this function.
+create or replace function public.enforce_invite_code(event jsonb)
+returns jsonb language plpgsql as $$
+declare code text;
+begin
+  code := event->'user'->'user_metadata'->>'invite_code';
+  if code is not null and upper(trim(code)) = 'TUESDAY' then
+    return '{}'::jsonb;
+  end if;
+  return jsonb_build_object('error', jsonb_build_object(
+    'http_code', 400,
+    'message', 'Invalid invite code — you need the code to create an account.'
+  ));
+end;
+$$;
+
+grant execute on function public.enforce_invite_code to supabase_auth_admin;
+revoke execute on function public.enforce_invite_code from authenticated, anon, public;

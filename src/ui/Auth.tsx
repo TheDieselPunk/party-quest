@@ -10,14 +10,16 @@ export function Auth({ onOffline }: { onOffline: () => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   async function submit() {
     if (!email.trim() || password.length < 6) { setErr('Enter an email and a password (6+ characters).'); return }
+    if (mode === 'signup' && !code.trim()) { setErr('Enter the invite code to create an account.'); return }
     setBusy(true); setErr(null)
     try {
-      if (mode === 'signup') await signUp(email, password)
+      if (mode === 'signup') await signUp(email, password, code)
       else await signIn(email, password)
       // Reload so the client hydrates the new session cleanly and the initial
       // cloud pull runs at mount — avoids a race where the first authed request
@@ -48,6 +50,12 @@ export function Auth({ onOffline }: { onOffline: () => void }) {
             onChange={(e) => setPassword(e.target.value)} placeholder="at least 6 characters"
             onKeyDown={(e) => { if (e.key === 'Enter') submit() }} />
         </Field>
+        {mode === 'signup' && (
+          <Field label="Invite code">
+            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="required to create an account"
+              onKeyDown={(e) => { if (e.key === 'Enter') submit() }} />
+          </Field>
+        )}
         {err && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{err}</div>}
         <button className="btn btn-primary btn-block" disabled={busy} onClick={submit}>
           {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'}

@@ -2,9 +2,15 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, cloudEnabled } from './supabase'
 
-export async function signUp(email: string, password: string): Promise<void> {
+export async function signUp(email: string, password: string, inviteCode: string): Promise<void> {
   if (!supabase) throw new Error('Cloud is not configured.')
-  const { error } = await supabase.auth.signUp({ email: email.trim(), password })
+  // invite_code is validated server-side by a Before-User-Created auth hook,
+  // so the actual code never lives in the client bundle.
+  const { error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    options: { data: { invite_code: inviteCode.trim() } },
+  })
   if (error) throw error
   // With email-confirmation off, signUp also returns a session; if not, sign in.
   const { data } = await supabase.auth.getSession()
