@@ -1,8 +1,8 @@
 # ⚔ Party Quest
 
 An RPG-themed, equipment-tailored, AI-coached personal training app for David & his wife.
-It works like Hevy — it hands you a workout with prescribed sets, reps, rest, and **recommended
-weights** — but it only knows *your* apartment-gym equipment, and it wraps the whole thing in an
+It hands you a ready-to-do workout with prescribed sets, reps, rest, and **recommended weights** —
+but it only knows *your* apartment-gym equipment, and it wraps the whole thing in an
 adventuring-party game where PRs are level-ups.
 
 Installable web app (PWA) for Android **and** iPhone. Local-first: each phone holds its own
