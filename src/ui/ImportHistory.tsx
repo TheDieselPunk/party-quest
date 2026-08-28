@@ -14,7 +14,7 @@ function dateRange(res: ImportResult): string {
 export function ImportHistory({ profile }: { profile: Profile }) {
   const [parsed, setParsed] = useState<ImportResult | null>(null)
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<{ added: number; skipped: number; level: number } | null>(null)
+  const [done, setDone] = useState<{ added: number; skipped: number; level: number; suggestsStrength: boolean } | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
@@ -36,7 +36,7 @@ export function ImportHistory({ profile }: { profile: Profile }) {
     if (!parsed) return
     setBusy(true)
     const r = await importSessions(profile, parsed.sessions)
-    setDone({ added: r.added, skipped: r.skipped, level: characterLevel(r.character) })
+    setDone({ added: r.added, skipped: r.skipped, level: characterLevel(r.character), suggestsStrength: parsed.suggestsStrength })
     setParsed(null)
     setBusy(false)
   }
@@ -77,6 +77,12 @@ export function ImportHistory({ profile }: { profile: Profile }) {
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
             Your character is now <b>Level {done.level}</b>, and your next workout will use this history for weight recommendations.
           </div>
+          {done.suggestsStrength && profile.goal !== 'strength' && (
+            <div style={{ fontSize: 12, marginTop: 8, background: '#00000030', borderRadius: 8, padding: '8px 10px', borderLeft: '3px solid var(--gold)' }}>
+              💡 Your logged workouts lean on <b>low-rep (≈6) compound work</b> — set your <b>Goal</b> to
+              <b> Gain Strength</b> above to match that style (heavier loads, lower reps, longer rest).
+            </div>
+          )}
         </div>
       )}
     </div>

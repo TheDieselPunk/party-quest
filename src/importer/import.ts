@@ -122,6 +122,10 @@ export interface ImportResult {
   sessions: CompletedSession[]
   recognized: number
   unrecognizedNames: string[]
+  /** Fraction of loaded working sets done in ≤6 reps (a strength-style signal). */
+  lowRepFraction: number
+  /** True when the logged style looks strength-oriented (suggest the Strength goal). */
+  suggestsStrength: boolean
 }
 
 /** Parse a CSV export into CompletedSession objects for a profile. */
@@ -189,5 +193,25 @@ export function importFromCsv(text: string, profile: Profile): ImportResult {
     })
   }
 
-  return { sessions, recognized: recognizedIds.size, unrecognizedNames: [...unrecognized] }
+  // Glean training style: how often are loaded sets taken in ≤6 reps?
+  let loaded = 0
+  let lowRep = 0
+  for (const s of sessions) {
+    for (const ex of s.exercises) {
+      for (const set of ex.sets) {
+        if (set.warmup || set.load == null || set.load <= 0 || set.reps <= 0) continue
+        loaded++
+        if (set.reps <= 6) lowRep++
+      }
+    }
+  }
+  const lowRepFraction = loaded ? lowRep / loaded : 0
+
+  return {
+    sessions,
+    recognized: recognizedIds.size,
+    unrecognizedNames: [...unrecognized],
+    lowRepFraction,
+    suggestsStrength: lowRepFraction >= 0.35,
+  }
 }
