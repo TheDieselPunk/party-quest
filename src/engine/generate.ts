@@ -9,6 +9,7 @@ import {
   SUPERSET_TRANSITION_SECONDS, CONDITIONING_ROUND_SECONDS,
 } from './params'
 import { recommendLoad, snapLoad, type HistoryIndex } from './weight'
+import { enabledObjectives } from '../domain/objectives'
 
 export interface GenerateOptions {
   busy?: boolean
@@ -41,6 +42,34 @@ function orderRank(ex: Exercise, role: 'primary' | 'accessory'): number {
 
 function primaryMuscle(ex: Exercise, fallback: Muscle): Muscle {
   return ex.muscles.find((m) => m.role === 'primary')?.muscle ?? fallback
+}
+
+/** Force a specific exercise into the day's picks (for objective accessories). */
+function ensurePick(id: string, pool: Exercise[], used: Set<string>, picks: Picked[]): void {
+  if (used.has(id)) return
+  const ex = pool.find((e) => e.id === id)
+  if (!ex) return
+  used.add(id)
+  picks.push({ exercise: ex, role: 'accessory', targetMuscle: primaryMuscle(ex, 'core') })
+}
+
+/**
+ * Bias the day toward the profile's objectives: posture adds pulling/rotator
+ * work (so you pull more than you press), and load-carriage adds a loaded carry
+ * plus back-extension endurance. Added as accessories — the time-fit pass keeps
+ * them when there's room and trims them first on a tight day (off-gym sessions
+ * still cover these objectives).
+ */
+function applyObjectiveBias(profile: Profile, pool: Exercise[], used: Set<string>, picks: Picked[]): void {
+  const objs = enabledObjectives(profile)
+  if (objs.some((o) => o.kind === 'posture')) {
+    if (!picks.some((p) => p.exercise.pattern === 'rear-delt')) ensurePick('face-pull', pool, used, picks)
+    ensurePick('cable-external-rotation', pool, used, picks)
+  }
+  if (objs.some((o) => o.kind === 'load-carriage')) {
+    ensurePick('farmer-carry', pool, used, picks)
+    ensurePick('low-back-ext', pool, used, picks)
+  }
 }
 
 function pickForSlot(slot: Slot, pool: Exercise[], used: Set<string>): Exercise | undefined {
@@ -307,6 +336,9 @@ export function generateWorkout(profile: Profile, options: GenerateOptions = {})
     used.add(ex.id)
     picks.push({ exercise: ex, role: slot.role, targetMuscle: primaryMuscle(ex, slot.muscle) })
   }
+
+  // Objective-driven accessories (posture pulls, loaded carries).
+  applyObjectiveBias(profile, pool, used, picks)
 
   // Append conditioning finisher(s) for fat loss / requested cardio.
   const condSlot: Slot = { patterns: ['conditioning'], muscle: 'core', role: 'accessory' }

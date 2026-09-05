@@ -1,8 +1,9 @@
 import type { Character, CompletedSession, Profile } from '../domain/types'
 import { ALL_MUSCLES, MUSCLE_LABEL, ALL_ATTRIBUTES, ATTRIBUTE_LABEL } from '../domain/types'
-import { weeklyVolumeTargets, volumeFromSessions, recentSessions } from '../engine'
+import { weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek, runPhase, ruckPhase } from '../engine'
 import { levelFromXp, characterLevel } from '../rpg/character'
 import { splitDays } from '../engine'
+import { enabledObjectives, weeksUntil, effectiveTargetDate, OBJECTIVE_META } from '../domain/objectives'
 import { EXERCISES_BY_ID } from '../data/exercises'
 
 // ---------------------------------------------------------------------------
@@ -46,7 +47,10 @@ export function buildCoachExport(
     'exercise order, rep ranges, and rest). Review the log below and give specific, actionable ' +
     'adjustments: is weekly volume per muscle in a productive range for the goal and experience? Is ' +
     'each muscle trained often enough? Are the lifts progressing (or stalling)? Any imbalances, ' +
-    'recovery red flags, or exercise swaps you\'d recommend? Keep it concrete.', '',
+    'recovery red flags, or exercise swaps you\'d recommend? Also weigh in on the **Objectives** below ' +
+    '(posture, running, load-carriage): is the concurrent training sensibly balanced, are the runs and ' +
+    'loaded walks progressing appropriately toward their dates, and is anything over- or under-cooked? ' +
+    'Keep it concrete.', '',
   )
 
   // --- Profile -------------------------------------------------------------
@@ -77,6 +81,37 @@ export function buildCoachExport(
   lines.push(`- Next scheduled day: **${nextDay.label}**`)
   lines.push('')
 
+  // --- Objectives & weekly plan --------------------------------------------
+  const objectives = enabledObjectives(profile)
+  if (objectives.length) {
+    lines.push('## Objectives (concurrent goals)', '')
+    for (const o of objectives) {
+      const meta = OBJECTIVE_META[o.kind]
+      if (o.kind === 'posture') {
+        lines.push(`- ${meta.icon} **Posture** — daily Desk Reset ${o.dailyReset ? 'on' : 'off'}; gym sessions biased toward pulling, rotator-cuff and thoracic work.`)
+      } else if (o.kind === 'run-event') {
+        const w = weeksUntil(o.targetDate, now)
+        lines.push(`- ${meta.icon} **${o.distanceKm}K run** — ${dateStr(o.targetDate)} (${w} weeks out) · phase **${runPhase(o, now)}** · can jog ~${o.baselineRunMinutes} min non-stop now · ${o.daysPerWeek} run days/wk.`)
+      } else if (o.kind === 'load-carriage') {
+        const td = effectiveTargetDate(o, now)
+        const w = weeksUntil(td, now)
+        lines.push(`- ${meta.icon} **${o.eventName}** (load carriage) — ${dateStr(td)} (${w} weeks out) · phase **${ruckPhase(o, now)}** · target pack ${o.packLoadLb} lb · ${o.daysOnFeet} days on feet${o.recurringAnnual ? ' · annual' : ''}.`)
+      }
+    }
+    lines.push('')
+
+    const week = planWeek(profile, now)
+    lines.push('## This week’s plan', '')
+    for (const d of week.days) {
+      const label = d.isToday ? 'Today' : d.weekday
+      const items = d.sessions
+        .map((s) => `${s.title}${s.kind !== 'gym' && s.kind !== 'rest' ? ` (${s.estMinutes}m)` : ''}`)
+        .join(', ')
+      lines.push(`- **${label}:** ${items}`)
+    }
+    lines.push('')
+  }
+
   // --- Attributes ----------------------------------------------------------
   lines.push('## Character attributes (muscle-region development)', '')
   lines.push('| Attribute | Level |', '|---|---|')
@@ -91,6 +126,11 @@ export function buildCoachExport(
   if (!recent.length) lines.push('_No sessions logged yet._', '')
   for (const s of recent) {
     lines.push(`### ${dateStr(s.date)} — ${s.title}`)
+    if (s.type && s.type !== 'gym') {
+      lines.push(`- _${s.type} session · ${Math.round((s.durationSeconds ?? 0) / 60)} min_`)
+      lines.push('')
+      continue
+    }
     for (const ex of s.exercises) {
       const working = ex.sets.filter((set) => set.done && !set.warmup)
       if (!working.length) continue

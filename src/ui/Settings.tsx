@@ -10,6 +10,7 @@ import { useProfiles } from '../store/hooks'
 import { useAuth, signOut } from '../cloud/auth'
 import { useSyncStatus } from '../cloud/sync'
 import { ImportHistory } from './ImportHistory'
+import { Objectives } from './Objectives'
 import { Chips, Field, Screen } from './common'
 
 export function Settings({ profile }: { profile: Profile }) {
@@ -147,6 +148,8 @@ export function Settings({ profile }: { profile: Profile }) {
           <button className="chip" aria-pressed={p.units === 'kg'} onClick={() => set('units', p.units === 'kg' ? 'lb' : 'kg')}>Units: {p.units}</button>
         </div>
       </div>
+
+      <Objectives value={p.objectives ?? []} onChange={(v) => set('objectives', v)} />
 
       <ImportHistory profile={profile} />
 

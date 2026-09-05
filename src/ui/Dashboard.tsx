@@ -1,18 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Profile } from '../domain/types'
+import type { PlannedSession, Profile } from '../domain/types'
 import { ALL_ATTRIBUTES, ATTRIBUTE_LABEL } from '../domain/types'
 import { useCharacter, useSessions, useActive } from '../store/hooks'
-import { dayForIndex, weeklyVolumeTargets, volumeFromSessions, recentSessions } from '../engine'
+import { useSession } from '../store/session'
+import { dayForIndex, weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek } from '../engine'
 import { characterLevel, levelFromXp } from '../rpg/character'
 import { startWorkout } from '../db/repo'
 import { Bar, Screen } from './common'
+
+const KIND_ICON: Record<string, string> = { run: '🏃', ruck: '🎒', mobility: '🧘' }
 
 export function Dashboard({ profile }: { profile: Profile }) {
   const navigate = useNavigate()
   const character = useCharacter(profile.id)
   const sessions = useSessions(profile.id) ?? []
   const active = useActive(profile.id)
+  const setPending = useSession((s) => s.setPendingGuided)
   const [busy, setBusy] = useState(true)
   const [starting, setStarting] = useState(false)
 
@@ -20,6 +24,13 @@ export function Dashboard({ profile }: { profile: Profile }) {
   const targets = weeklyVolumeTargets(profile)
   const last7 = recentSessions(sessions, 7)
   const actual = volumeFromSessions(last7)
+  const gymLast7 = last7.filter((s) => !s.type || s.type === 'gym')
+
+  // Off-gym sessions planned for today (runs, loaded walks, mobility).
+  const todayExtras: PlannedSession[] = planWeek(profile).days[0].sessions.filter(
+    (s) => s.kind === 'run' || s.kind === 'ruck' || s.kind === 'mobility',
+  )
+  function openExtra(s: PlannedSession) { setPending(s); navigate('/session') }
 
   const totalTarget = Object.values(targets).reduce((a, b) => a + b, 0)
   const totalActual = Object.values(actual).reduce((a, b) => a + b, 0)
@@ -88,11 +99,40 @@ export function Dashboard({ profile }: { profile: Profile }) {
         )}
       </div>
 
+      {/* Off-gym plan for today */}
+      {todayExtras.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div className="eyebrow">Also on today’s plan</div>
+            <button className="btn btn-sm btn-ghost" onClick={() => navigate('/plan')}>Full week ›</button>
+          </div>
+          <div className="center-col" style={{ gap: 8, marginTop: 8 }}>
+            {todayExtras.map((s, k) => (
+              <button key={k} className="row" onClick={() => openExtra(s)}
+                style={{
+                  justifyContent: 'space-between', alignItems: 'center', width: '100%',
+                  background: '#0000002e', border: 'none', borderRadius: 10, padding: '10px 12px',
+                  cursor: 'pointer', textAlign: 'left', color: 'inherit',
+                }}>
+                <span className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontSize: 20 }}>{KIND_ICON[s.kind]}</span>
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 600, fontSize: 14 }}>{s.title}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>{s.detail}</span>
+                  </span>
+                </span>
+                <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{s.estMinutes} min ›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Weekly progress */}
       <div className="card" style={{ marginTop: 14 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div className="eyebrow">This Week</div>
-          <span className="muted" style={{ fontSize: 12 }}>{last7.length}/{profile.frequency} sessions</span>
+          <span className="muted" style={{ fontSize: 12 }}>{gymLast7.length}/{profile.frequency} sessions</span>
         </div>
         <div className="row" style={{ justifyContent: 'space-between', margin: '8px 0 4px' }}>
           <span style={{ fontSize: 14 }}>Total working sets</span>

@@ -7,6 +7,8 @@ import { initSync, clearSync, useSyncStatus } from './cloud/sync'
 import { Auth } from './ui/Auth'
 import { Onboarding } from './ui/Onboarding'
 import { Dashboard } from './ui/Dashboard'
+import { WeekView } from './ui/WeekView'
+import { GuidedSession } from './ui/GuidedSession'
 import { WorkoutPlayer } from './ui/WorkoutPlayer'
 import { History } from './ui/History'
 import { CharacterScreen } from './ui/CharacterScreen'
@@ -16,6 +18,7 @@ import { Coach } from './ui/Coach'
 
 const TABS = [
   { to: '/', icon: '🏰', label: 'Tavern' },
+  { to: '/plan', icon: '🗺️', label: 'Plan' },
   { to: '/history', icon: '📜', label: 'Log' },
   { to: '/character', icon: '🛡️', label: 'Hero' },
   { to: '/party', icon: '⚔️', label: 'Party' },
@@ -91,11 +94,11 @@ export default function App() {
     )
   }
 
-  const onWorkout = pathname === '/workout'
+  const immersive = pathname === '/workout' || pathname === '/session'
 
   return (
     <div className="app-shell">
-      {!onWorkout && (
+      {!immersive && (
         <header className="app-header">
           <div className="brand">⚔ Party Quest</div>
           <div className="row">
@@ -107,6 +110,8 @@ export default function App() {
       <Routes>
         <Route path="/onboarding" element={<Onboarding first={false} />} />
         {profile && <Route path="/" element={<Dashboard profile={profile} />} />}
+        {profile && <Route path="/plan" element={<WeekView profile={profile} />} />}
+        {profile && <Route path="/session" element={<GuidedSession profile={profile} />} />}
         {profile && <Route path="/workout" element={<WorkoutPlayer profile={profile} />} />}
         {profile && <Route path="/history" element={<History profile={profile} />} />}
         {profile && <Route path="/character" element={<CharacterScreen profile={profile} />} />}
@@ -116,7 +121,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {!onWorkout && <TabBar />}
+      {!immersive && <TabBar />}
     </div>
   )
 }

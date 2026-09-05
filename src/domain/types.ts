@@ -222,6 +222,9 @@ export interface Profile {
   dayIndex: number
   weekStart?: number
 
+  /** Concurrent real-life training objectives layered on top of the base goal. */
+  objectives?: Objective[]
+
   /** Last local mutation time (ms); used for cloud last-write-wins sync. */
   updatedAt?: number
 }
@@ -253,6 +256,10 @@ export interface CompletedSession {
   goal: Goal
   exercises: LoggedExercise[]
   durationSeconds?: number
+  /** Off-gym sessions (mobility/run/ruck) carry a type; gym sessions omit it. */
+  type?: SessionType
+  /** Which objective this session served (off-gym sessions). */
+  objectiveId?: string
   updatedAt?: number
 }
 
@@ -305,4 +312,89 @@ export interface Character {
   streak: number
   lastSessionDate?: number
   updatedAt?: number
+}
+
+// --- Objectives (concurrent, real-life training goals) ----------------------
+// These layer on top of the base `goal`: they bias gym sessions AND schedule
+// off-gym work (mobility flows, runs, loaded walks) with date-aware
+// periodization. Objectives live on the Profile so they ride cloud sync.
+export type ObjectiveKind = 'posture' | 'run-event' | 'load-carriage'
+
+interface ObjectiveCommon {
+  id: string
+  kind: ObjectiveKind
+  enabled: boolean
+  createdAt: number
+}
+
+export interface PostureObjective extends ObjectiveCommon {
+  kind: 'posture'
+  /** Include the short daily desk-reset mobility flow in the plan. */
+  dailyReset: boolean
+}
+
+export interface RunEventObjective extends ObjectiveCommon {
+  kind: 'run-event'
+  distanceKm: number
+  /** Race day (ms since epoch). */
+  targetDate: number
+  /** Continuous jogging the trainee can sustain now, minutes (0 = walk only). */
+  baselineRunMinutes: number
+  /** Preferred number of run days per week. */
+  daysPerWeek: number
+}
+
+export interface LoadCarriageObjective extends ObjectiveCommon {
+  kind: 'load-carriage'
+  /** e.g. "Hulaween". */
+  eventName: string
+  /** Next event day (ms). */
+  targetDate: number
+  recurringAnnual: boolean
+  /** Target pack weight to be comfortable carrying, lb. */
+  packLoadLb: number
+  /** Consecutive days on your feet at the event. */
+  daysOnFeet: number
+}
+
+export type Objective = PostureObjective | RunEventObjective | LoadCarriageObjective
+
+// --- Off-gym sessions & weekly planning -------------------------------------
+export type SessionType = 'gym' | 'mobility' | 'run' | 'ruck'
+export type PlannedKind = SessionType | 'rest'
+
+/** One step of a guided off-gym session (a mobility move, or a run interval). */
+export interface GuidedStep {
+  label: string
+  instruction?: string
+  /** Timed hold / interval in seconds — the player auto-advances. */
+  seconds?: number
+  /** Rep- or count-based move — the player advances on tap. */
+  reps?: number
+  perSide?: boolean
+}
+
+/** A single item on a day's plan. Gym/rest have no steps; the rest are guided. */
+export interface PlannedSession {
+  kind: PlannedKind
+  title: string
+  detail: string
+  estMinutes: number
+  objectiveId?: string
+  /** Which character attribute this session mainly develops. */
+  attribute?: Attribute
+  steps?: GuidedStep[]
+}
+
+export interface DayPlan {
+  /** 0..6 from the start of the plan (today). */
+  offset: number
+  weekday: string
+  isToday: boolean
+  sessions: PlannedSession[]
+}
+
+export interface WeekPlan {
+  startDate: number
+  days: DayPlan[]
 }

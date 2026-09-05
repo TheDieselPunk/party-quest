@@ -1,5 +1,5 @@
 import type {
-  Character, CompletedSession, LoggedExercise, PrescribedExercise, Profile,
+  Character, CompletedSession, LoggedExercise, PrescribedExercise, Profile, SessionType,
 } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
 import { logsFromPlan } from '../domain/active'
@@ -81,6 +81,41 @@ export async function importSessions(
   queuePush('characters', profile.id)
 
   return { added, skipped, character }
+}
+
+/**
+ * Log a completed off-gym session (mobility / run / ruck). These carry no
+ * per-muscle volume; RPG rewards come from the session type + duration. They do
+ * NOT advance the gym split rotation.
+ */
+export async function logOffDaySession(
+  profile: Profile,
+  spec: { kind: Exclude<SessionType, 'gym'>; title: string; minutes: number; objectiveId?: string },
+): Promise<SessionRewards> {
+  const session: CompletedSession = stampNow({
+    id: crypto.randomUUID(),
+    profileId: profile.id,
+    date: Date.now(),
+    title: spec.title,
+    goal: profile.goal,
+    exercises: [],
+    durationSeconds: Math.max(60, Math.round(spec.minutes * 60)),
+    type: spec.kind,
+    objectiveId: spec.objectiveId,
+  })
+
+  const character = (await db.characters.get(profile.id)) ?? emptyCharacter(profile.id)
+  const rewards = applySession(character, session)
+  stampNow(rewards.character)
+
+  await db.transaction('rw', db.sessions, db.characters, async () => {
+    await db.sessions.put(session)
+    await db.characters.put(rewards.character)
+  })
+
+  queuePush('sessions', session.id)
+  queuePush('characters', profile.id)
+  return rewards
 }
 
 // --- workout generation & lifecycle ----------------------------------------

@@ -640,6 +640,38 @@ export const EXERCISES: Exercise[] = [
     cues: 'Hug/grip the bag; hinge back with a flat back, stand tall.',
     altIds: ['db-rdl', 'smith-rdl'],
   },
+
+  // ============ POSTURE & LOAD-CARRIAGE (objective accessories) ============
+  {
+    id: 'cable-external-rotation',
+    name: 'Cable External Rotation',
+    equipmentId: 'hoist-hd3000', modeId: 'low',
+    kind: 'isolation', pattern: 'rear-delt', repClass: 'isolation',
+    muscles: [{ muscle: 'shoulders', role: 'primary' }],
+    loadBasis: 'total', baseLoad: 15,
+    cues: 'Elbow pinned to your side at 90°, rotate the forearm outward and return slowly. Strengthens the rotator cuff that keeps your shoulders set back.',
+    altIds: ['band-pull-apart', 'face-pull'],
+  },
+  {
+    id: 'farmer-carry',
+    name: "Farmer's Carry",
+    equipmentId: 'dumbbell',
+    kind: 'core', pattern: 'core-anti-extension', repClass: 'core',
+    muscles: [{ muscle: 'core', role: 'primary' }, { muscle: 'back', role: 'secondary' }],
+    loadBasis: 'per-hand', baseLoad: 40,
+    cues: 'A heavy dumbbell in each hand; walk tall, ribs down and braced, for ~40s. Builds the trunk and grip endurance that carrying a pack demands.',
+    altIds: ['suitcase-carry'],
+  },
+  {
+    id: 'suitcase-carry',
+    name: 'Suitcase Carry',
+    equipmentId: 'dumbbell',
+    kind: 'core', pattern: 'core-anti-extension', repClass: 'core',
+    muscles: [{ muscle: 'core', role: 'primary' }],
+    loadBasis: 'per-hand', baseLoad: 35,
+    cues: 'One dumbbell on one side; walk ~40s without leaning. Trains the side-core that resists a loaded pack pulling you off balance.',
+    altIds: ['farmer-carry'],
+  },
 ]
 
 export const EXERCISES_BY_ID: Record<string, Exercise> = Object.fromEntries(

@@ -12,6 +12,10 @@ const XP_SECONDARY_SET = 5
 const XP_CONDITIONING_ROUND = 8
 const XP_SESSION_COMPLETE = 20
 const XP_PR_BONUS = 25
+/** Off-gym endurance work (runs/rucks) earns grit per 10 minutes on feet. */
+const XP_ENDURANCE_PER_10MIN = 12
+/** A completed mobility / desk-reset flow. */
+const XP_MOBILITY = 15
 
 /** Level for a given attribute XP total (gentle square-root curve). */
 export function levelFromXp(xp: number): number {
@@ -124,6 +128,21 @@ export function applySession(prev: Character, session: CompletedSession): Sessio
         bests[ex.exerciseId] = { load: best.load, reps: best.reps, est1rm: best.est }
       }
     }
+  }
+
+  // Off-gym sessions (empty `exercises`, so the loop above is a no-op) earn
+  // XP by type from their duration, feeding the conditioning/endurance stats.
+  const minutes = (session.durationSeconds ?? 0) / 60
+  const blocks = Math.max(1, Math.ceil(minutes / 10))
+  if (session.type === 'run') {
+    add('grit', blocks * XP_ENDURANCE_PER_10MIN)
+  } else if (session.type === 'ruck') {
+    add('grit', blocks * 8)
+    add('core', blocks * 8)
+    add('foundation', blocks * 6)
+  } else if (session.type === 'mobility') {
+    add('vitality', XP_MOBILITY)
+    add('core', 5)
   }
 
   add('vitality', XP_SESSION_COMPLETE)
