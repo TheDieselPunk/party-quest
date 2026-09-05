@@ -13,7 +13,7 @@ describe('snapLoad', () => {
     expect(snapLoad('dumbbell', 999)).toBe(50) // clamped to heaviest pair
   })
   it('rounds stack machines to their increment and clamps to range', () => {
-    expect(snapLoad('hoist-hd3300', 91)).toBe(90) // 5 lb steps
+    expect(snapLoad('hoist-hd3300', 94)).toBe(90) // 10 lb steps (no 5 lb add-on)
     expect(snapLoad('hoist-hd3300', 3)).toBe(10) // min
   })
 })
@@ -28,7 +28,7 @@ describe('recommendLoad (double progression)', () => {
   it('adds a step after hitting the top of the range on all sets', () => {
     const last: LastPerf = { load: 90, repsPerSet: [12, 12, 12], rir: 2 }
     const rec = recommendLoad(ex, 'intermediate', [8, 12], 2, last)
-    expect(rec.load).toBe(95) // HD-3300 steps 5 lb (David's unit has the add-on)
+    expect(rec.load).toBe(100) // HD-3300 steps 10 lb (no 5 lb add-on)
     expect(rec.calibration).toBe(false)
   })
   it('holds the load when reps are mid-range', () => {
@@ -37,7 +37,7 @@ describe('recommendLoad (double progression)', () => {
   })
   it('backs off after missing the bottom of the range', () => {
     const last: LastPerf = { load: 90, repsPerSet: [6, 5, 5], rir: 0 }
-    expect(recommendLoad(ex, 'intermediate', [8, 12], 2, last).load).toBe(85)
+    expect(recommendLoad(ex, 'intermediate', [8, 12], 2, last).load).toBe(80)
   })
   it('returns null for bodyweight moves', () => {
     expect(recommendLoad(EXERCISES_BY_ID['plank'], 'intermediate', [10, 20], 2, undefined).load).toBeNull()

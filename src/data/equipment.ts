@@ -62,9 +62,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // 215 lb stack; David's unit has the 5 lb add-on installed
+    increment: 10, // 215 lb stack of 10 lb plates; no 5 lb add-on (only the leg press has that)
     minLoad: 10,
-    maxLoad: 220,
+    maxLoad: 210,
     modes: [
       {
         id: 'chest-press',
@@ -89,9 +89,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // 225 lb stack; 5 lb add-on installed
+    increment: 10, // 225 lb stack of 10 lb plates; no 5 lb add-on
     minLoad: 10,
-    maxLoad: 230,
+    maxLoad: 220,
     modes: [
       {
         id: 'lat-pulldown',
@@ -111,9 +111,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // 215 lb stack (confirmed HD-3400 spec); 5 lb add-on installed
+    increment: 10, // 215 lb stack of 10 lb plates (confirmed HD-3400 spec); no 5 lb add-on
     minLoad: 10,
-    maxLoad: 220,
+    maxLoad: 210,
     modes: [
       {
         id: 'leg-extension',
@@ -133,9 +133,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // 180 lb stack; 5 lb add-on installed
+    increment: 10, // 180 lb stack of 10 lb plates; no 5 lb add-on
     minLoad: 10,
-    maxLoad: 185,
+    maxLoad: 180,
     modes: [
       {
         id: 'ab-crunch',
@@ -155,7 +155,7 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // dual 200 lb stacks at 2:1 ratio → ~5 lb effective steps
+    increment: 5, // 2:1 ratio halves each 10 lb plate → ~5 lb effective steps (from the ratio, not a 5 lb add-on)
     minLoad: 5,
     maxLoad: 100, // 2:1 ratio: felt resistance is half the 200 lb stack
     notes: 'Functional trainer, 2:1 ratio (you feel half the stack weight). 32 pulley positions at 2.5". Loads here are effective resistance.',
@@ -185,8 +185,8 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5,
-    minLoad: 15,
+    increment: 10, // 10 lb selectorized plates; no 5 lb switch (only the leg press has that)
+    minLoad: 20,
     maxLoad: 250,
     modes: [
       {
@@ -207,9 +207,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 5, // Matrix Versa: 5 lb incremental weights
+    increment: 5, // the ONLY machine with the 5 lb switch/add-on (per David) → true 5 lb steps
     minLoad: 40,
-    maxLoad: 300,
+    maxLoad: 420, // David confirmed the stack tops out at 420 lb
     modes: [
       {
         id: 'leg-press',
