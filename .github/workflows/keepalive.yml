@@ -1,0 +1,44 @@
+name: Supabase keep-alive
+
+# Free Supabase projects auto-pause after ~7 days without any requests. This
+# pings the database on a schedule so the project stays awake and cloud
+# backup/sync keeps working between training sessions.
+#
+# Runs twice a week (Mon & Thu) — comfortably under the 7-day pause window even
+# if a scheduled run is delayed. It reuses the same repo secrets as the deploy.
+#
+# NOTE: GitHub disables scheduled workflows after ~60 days with no repo
+# activity; a push (or a manual "Run workflow") re-enables them.
+
+on:
+  schedule:
+    - cron: '23 8 * * 1,4' # 08:23 UTC, Monday and Thursday
+  workflow_dispatch: # allow a manual run from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST to keep the project active
+        env:
+          URL: ${{ secrets.VITE_SUPABASE_URL }}
+          KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "Supabase secrets not set — nothing to ping."
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/resp.txt -w "%{http_code}" --max-time 30 \
+            "$URL/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+          echo "HTTP $code"
+          head -c 300 /tmp/resp.txt || true
+          echo
+          # 2xx/4xx all mean the database answered (RLS may return an empty set);
+          # only a 5xx / no response indicates the project is down.
+          if [ "$code" -ge 500 ] || [ "$code" -eq 000 ]; then
+            echo "Supabase did not respond healthily."
+            exit 1
+          fi
+          echo "Project is awake."
