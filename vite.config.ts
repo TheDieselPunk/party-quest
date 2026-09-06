@@ -32,8 +32,8 @@ export default defineConfig({
       // PNG icons are generated at the deploy step; SVG covers dev.
       devOptions: { enabled: false },
       workbox: {
-        // Precache the exercise GIFs too, so demos work offline in the gym.
-        globPatterns: ['**/*.{js,css,html,svg,png,gif,webmanifest}'],
+        // Precache the exercise GIFs + mobility videos too, so demos work offline in the gym.
+        globPatterns: ['**/*.{js,css,html,svg,png,gif,mp4,webmanifest}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),

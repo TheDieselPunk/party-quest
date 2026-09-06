@@ -372,6 +372,8 @@ export interface GuidedStep {
   /** Rep- or count-based move — the player advances on tap. */
   reps?: number
   perSide?: boolean
+  /** Key for the move's looping demo video (see data/mobility.ts). */
+  art?: string
 }
 
 /** A single item on a day's plan. Gym/rest have no steps; the rest are guided. */

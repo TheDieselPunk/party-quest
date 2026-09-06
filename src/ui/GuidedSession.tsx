@@ -5,6 +5,7 @@ import { ATTRIBUTE_LABEL } from '../domain/types'
 import { useSession } from '../store/session'
 import { logOffDaySession } from '../db/repo'
 import type { SessionRewards } from '../rpg/character'
+import { mobilityVideo } from '../data/mobility'
 import { fmtSeconds } from './common'
 
 const KIND_ICON: Record<string, string> = { mobility: '🧘', run: '🏃', ruck: '🎒' }
@@ -156,6 +157,14 @@ export function GuidedSession({ profile }: { profile: Profile }) {
 
       <div className="card center-col" style={{ alignItems: 'center', textAlign: 'center', padding: 20 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 24 }}>{step?.label}</div>
+        {step?.art && mobilityVideo(step.art) && (
+          <video
+            key={step.art}
+            src={mobilityVideo(step.art)}
+            muted loop autoPlay playsInline preload="auto"
+            style={{ width: '100%', maxWidth: 190, borderRadius: 12, margin: '8px auto 2px', display: 'block', background: '#efece4' }}
+          />
+        )}
         {timed ? (
           <div className="big-num" style={{ fontSize: 52, color: (remaining ?? 0) <= 0 ? 'var(--moss)' : 'var(--gold-soft)', margin: '6px 0' }}>
             {(remaining ?? 0) <= 0 ? 'Done!' : fmtSeconds(Math.max(0, remaining ?? 0))}

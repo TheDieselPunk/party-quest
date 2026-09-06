@@ -11,43 +11,51 @@ const STEPS: GuidedStep[] = [
   {
     label: 'Chin tucks',
     reps: 10,
+    art: 'chin-tuck',
     instruction: 'Sitting or standing tall, gently draw your head straight back (make a "double chin"), hold 2s, release. Wakes up the deep neck flexors that fight forward head.',
   },
   {
     label: 'Doorway pec stretch',
     seconds: 30,
     perSide: true,
+    art: 'doorway-pec',
     instruction: 'Forearm on a doorframe at shoulder height, step through until you feel a stretch across the chest. Opens the tight chest that rounds your shoulders.',
   },
   {
     label: 'Wall slides',
     reps: 10,
+    art: 'wall-slide',
     instruction: 'Back to a wall, arms in a "goalpost". Slide them up and down keeping wrists and elbows on the wall. Trains the lower/mid traps to set your shoulders back.',
   },
   {
     label: 'Thoracic extension',
     seconds: 30,
+    art: 'thoracic-extension',
     instruction: 'Hands behind your head, gently arch your upper back over a chair edge (or foam roller). Restores the mid-back extension a desk steals.',
   },
   {
     label: 'Band pull-aparts',
     reps: 15,
+    art: 'band-pull-apart',
     instruction: 'Arms straight, pull a band apart to your chest, squeezing the shoulder blades. (No band? Do prone "T" raises on the floor.)',
   },
   {
     label: 'Kneeling hip-flexor stretch',
     seconds: 30,
     perSide: true,
+    art: 'hip-flexor',
     instruction: 'Half-kneel, squeeze the down-side glute and shift forward. Lengthens the hip flexors that tilt your pelvis and feed low-back ache.',
   },
   {
     label: 'Glute bridges',
     reps: 12,
+    art: 'glute-bridge',
     instruction: 'On your back, drive through the heels and squeeze the glutes at the top. Turns on the muscles that stabilize your pelvis and spare your low back.',
   },
   {
     label: 'Cat–cow',
     reps: 8,
+    art: 'cat-cow',
     instruction: 'On all fours, alternate rounding and arching the spine, slow and full-range. Finishes with easy segmental spinal mobility.',
   },
 ]
