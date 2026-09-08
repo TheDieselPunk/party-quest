@@ -22,6 +22,7 @@ export function makeDefaultProfile(overrides: Partial<Profile> = {}): Profile {
     rirTarget: 2,
     restAutostart: true,
     sound: true,
+    keepAwake: true,
     deloadWeeks: 8,
     cardio: 'none',
     splitStyle: 'auto',

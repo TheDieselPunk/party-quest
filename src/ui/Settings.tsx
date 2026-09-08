@@ -145,8 +145,13 @@ export function Settings({ profile }: { profile: Profile }) {
           <button className="chip" aria-pressed={p.warmup} onClick={() => set('warmup', !p.warmup)}>Warm-up sets {p.warmup ? 'on' : 'off'}</button>
           <button className="chip" aria-pressed={p.restAutostart} onClick={() => set('restAutostart', !p.restAutostart)}>Auto rest timer {p.restAutostart ? 'on' : 'off'}</button>
           <button className="chip" aria-pressed={p.sound} onClick={() => set('sound', !p.sound)}>Timer sound {p.sound ? 'on' : 'off'}</button>
+          <button className="chip" aria-pressed={p.keepAwake !== false} onClick={() => set('keepAwake', p.keepAwake === false)}>Keep screen awake {p.keepAwake !== false ? 'on' : 'off'}</button>
           <button className="chip" aria-pressed={p.units === 'kg'} onClick={() => set('units', p.units === 'kg' ? 'lb' : 'kg')}>Units: {p.units}</button>
         </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+          Keeping the screen awake during a workout lets the rest-timer alert fire on time — phones
+          suspend the timer when the screen sleeps, and web apps can’t send a true background alert.
+        </p>
       </div>
 
       <Objectives value={p.objectives ?? []} onChange={(v) => set('objectives', v)} />

@@ -214,6 +214,8 @@ export interface Profile {
   rirTarget: number
   restAutostart: boolean
   sound: boolean
+  /** Hold a screen wake lock during workouts so rest-timer alerts fire on time. */
+  keepAwake?: boolean
   deloadWeeks: number
   cardio: CardioLevel
   splitStyle: SplitStyle

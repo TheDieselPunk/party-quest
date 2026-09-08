@@ -6,6 +6,7 @@ import { useSession } from '../store/session'
 import { logOffDaySession } from '../db/repo'
 import type { SessionRewards } from '../rpg/character'
 import { mobilityVideo } from '../data/mobility'
+import { useWakeLock } from './useWakeLock'
 import { fmtSeconds } from './common'
 
 const KIND_ICON: Record<string, string> = { mobility: '🧘', run: '🏃', ruck: '🎒' }
@@ -56,6 +57,10 @@ export function GuidedSession({ profile }: { profile: Profile }) {
     // clears `pending` but shows the completion screen via `done`).
     if (!pending && !done) navigate('/plan', { replace: true })
   }, [pending, done, navigate])
+
+  // Keep the screen awake during a guided run/ruck/mobility session so its
+  // timed steps auto-advance and beep on time even if you set the phone down.
+  useWakeLock((profile.keepAwake ?? true) && !!pending && !done)
 
   const step: GuidedStep | undefined = steps[i]
   const isLast = i >= steps.length - 1

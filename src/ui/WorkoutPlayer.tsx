@@ -9,6 +9,7 @@ import { gifFor } from '../data/gifs'
 import type { SessionRewards } from '../rpg/character'
 import { RestTimer } from './RestTimer'
 import { RewardsModal } from './Rewards'
+import { useWakeLock } from './useWakeLock'
 import { loadLabel, repLabel, fmtSeconds } from './common'
 
 interface Block { group: number | null; indices: number[] }
@@ -40,6 +41,10 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
   }, [active])
 
   const blocks = useMemo(() => (active ? buildBlocks(active.plan.exercises) : []), [active])
+
+  // Keep the screen awake while an actual workout is loaded, so the rest timer
+  // and its alert keep running when you set the phone down between sets.
+  useWakeLock((profile.keepAwake ?? true) && !!active)
 
   if (active === undefined) return <div className="screen">Loading…</div>
   if (active === null) {
