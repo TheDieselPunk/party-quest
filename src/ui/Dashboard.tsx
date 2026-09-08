@@ -27,7 +27,7 @@ export function Dashboard({ profile }: { profile: Profile }) {
   const gymLast7 = last7.filter((s) => !s.type || s.type === 'gym')
 
   // Off-gym sessions planned for today (runs, loaded walks, mobility).
-  const todayExtras: PlannedSession[] = planWeek(profile).days[0].sessions.filter(
+  const todayExtras: PlannedSession[] = planWeek(profile, Date.now(), sessions).days[0].sessions.filter(
     (s) => s.kind === 'run' || s.kind === 'ruck' || s.kind === 'mobility',
   )
   function openExtra(s: PlannedSession) { setPending(s); navigate('/session') }

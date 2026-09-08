@@ -16,6 +16,25 @@ import { effectiveTargetDate, weeksSince, weeksUntil } from '../domain/objective
 
 const round5 = (n: number) => Math.round(n / 5) * 5
 
+/** Loaded walks the planner schedules per week (mirrors planWeek's cadence). */
+function ruckPerWeek(o: LoadCarriageObjective): number {
+  return o.daysOnFeet >= 3 ? 2 : 1
+}
+
+/**
+ * Weeks of progression the trainee has actually *earned*. Capped by the
+ * calendar — you can never get ahead of your event date by cramming — but held
+ * back when sessions were missed: one week's worth of the ladder is earned for
+ * every `perWeek` qualifying sessions completed. When completion data isn't
+ * supplied (`completed` undefined), it falls back to pure calendar time, so the
+ * old date-only behavior is preserved for callers that don't pass history.
+ */
+function earnedWeeks(createdAt: number, now: number, perWeek: number, completed?: number): number {
+  const calendar = weeksSince(createdAt, now)
+  if (completed == null) return calendar
+  return Math.min(calendar, Math.floor(completed / Math.max(1, perWeek)))
+}
+
 const WARMUP: GuidedStep = { label: 'Warm-up walk', seconds: 300, instruction: 'Easy brisk walk to warm up the legs and lungs.' }
 const COOLDOWN: GuidedStep = { label: 'Cool-down walk', seconds: 300, instruction: 'Easy walk until your breathing settles, then stretch the calves and hips.' }
 
@@ -75,16 +94,20 @@ function estMinutesOf(steps: GuidedStep[]): number {
 /**
  * Today's run. `variant` (0..2) lets the weekly planner vary the week's runs
  * once the trainee can run continuously (intervals / easy / long).
+ * `completedRuns` = runs actually logged for this objective; when given, the
+ * base ladder advances on real work done rather than the calendar alone (so
+ * missed weeks don't push you onto intervals you haven't earned).
  */
-export function runSession(o: RunEventObjective, now = Date.now(), variant = 0): PlannedSession {
+export function runSession(o: RunEventObjective, now = Date.now(), variant = 0, completedRuns?: number): PlannedSession {
   const phase = runPhase(o, now)
   let body: GuidedStep[]
   let detail: string
 
   if (phase === 'base') {
     // Authentic C25K: the same run/walk workout across the week; it advances
-    // one rung per week (seeded by current ability), capping at a 30-min run.
-    const stage = seedStage(o.baselineRunMinutes) + weeksSince(o.createdAt, now)
+    // one rung per week of actual training (seeded by current ability), capping
+    // at a 30-min run.
+    const stage = seedStage(o.baselineRunMinutes) + earnedWeeks(o.createdAt, now, o.daysPerWeek, completedRuns)
     const { body: b, label } = ladderBody(stage)
     body = b
     detail = `Base building • ${label}`
@@ -126,10 +149,14 @@ export function ruckPhase(o: LoadCarriageObjective, now = Date.now()): RuckPhase
   return 'build'
 }
 
-/** Today's loaded walk. `variant` 2 = the week's longer walk. */
-export function ruckSession(o: LoadCarriageObjective, now = Date.now(), variant = 0): PlannedSession {
+/**
+ * Today's loaded walk. `variant` 2 = the week's longer walk. `completedRucks` =
+ * loaded walks actually logged for this objective; when given, the build ramp
+ * (duration then load) grows with real work done rather than the calendar alone.
+ */
+export function ruckSession(o: LoadCarriageObjective, now = Date.now(), variant = 0, completedRucks?: number): PlannedSession {
   const phase = ruckPhase(o, now)
-  const elapsed = weeksSince(o.createdAt, now)
+  const elapsed = earnedWeeks(o.createdAt, now, ruckPerWeek(o), completedRucks)
   let minutes: number
   let load: number
   let detail: string

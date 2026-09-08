@@ -107,7 +107,7 @@ export function buildCoachExport(
     }
     lines.push('')
 
-    const week = planWeek(profile, now)
+    const week = planWeek(profile, now, sessions)
     lines.push('## This week’s plan', '')
     for (const d of week.days) {
       const label = d.isToday ? 'Today' : d.weekday

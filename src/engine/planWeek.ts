@@ -1,4 +1,4 @@
-import type { DayPlan, PlannedSession, Profile, WeekPlan } from '../domain/types'
+import type { CompletedSession, DayPlan, PlannedSession, Profile, WeekPlan } from '../domain/types'
 import { findObjective } from '../domain/objectives'
 import { dayForIndex } from './templates'
 import { runSession, ruckSession } from './endurance'
@@ -43,13 +43,21 @@ function startOfDay(now: number): number {
   return d.getTime()
 }
 
-export function planWeek(profile: Profile, now = Date.now()): WeekPlan {
+export function planWeek(profile: Profile, now = Date.now(), history: CompletedSession[] = []): WeekPlan {
   const startDate = startOfDay(now)
   const gymDays = gymDayPattern(profile.frequency)
 
   const runObj = findObjective(profile, 'run-event')
   const ruckObj = findObjective(profile, 'load-carriage')
   const postureObj = findObjective(profile, 'posture')
+
+  // Runs / loaded walks actually completed for each objective — so the plan
+  // progresses on real work done, not just the calendar (a missed week holds
+  // the ladder back instead of advancing past what's been earned).
+  const doneFor = (kind: 'run' | 'ruck', id: string, since: number) =>
+    history.filter((s) => s.type === kind && s.objectiveId === id && s.date >= since).length
+  const runDone = runObj ? doneFor('run', runObj.id, runObj.createdAt) : 0
+  const ruckDone = ruckObj ? doneFor('ruck', ruckObj.id, ruckObj.createdAt) : 0
 
   const all = [0, 1, 2, 3, 4, 5, 6]
   const offGym = all.filter((d) => !gymDays.includes(d))
@@ -82,13 +90,13 @@ export function planWeek(profile: Profile, now = Date.now()): WeekPlan {
     if (runObj && runDays.includes(offset)) {
       // Vary the week's runs: first = quality, last = long, middle = easy.
       const variant = runK === 0 ? 0 : runK === runDays.length - 1 ? 2 : 1
-      sessions.push(runSession(runObj, dayTs, variant))
+      sessions.push(runSession(runObj, dayTs, variant, runDone))
       runK++
     }
 
     if (ruckObj && ruckDays.includes(offset)) {
       const variant = ruckK === ruckDays.length - 1 ? 2 : 0
-      sessions.push(ruckSession(ruckObj, dayTs, variant))
+      sessions.push(ruckSession(ruckObj, dayTs, variant, ruckDone))
       ruckK++
     }
 

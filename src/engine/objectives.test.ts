@@ -68,6 +68,52 @@ describe('ruck periodization', () => {
   })
 })
 
+describe('completion-aware endurance progression', () => {
+  it('holds the run ladder back when sessions are missed, but never past the calendar', () => {
+    const o = runObj() // daysPerWeek 3, base phase for weeks
+    const at3wk = NOW + 3 * WEEK
+
+    // Missed everything: still on the very first rung, exactly like week 0.
+    const behind = runSession(o, at3wk, 0, 0)
+    expect(behind.detail).toBe(runSession(o, NOW, 0, 0).detail)
+
+    // Kept up (~3 runs/week × 3 weeks): advanced to the 5-min-interval rung.
+    const caughtUp = runSession(o, at3wk, 0, 9)
+    expect(caughtUp.detail).toContain('5 min')
+    expect(caughtUp.detail).not.toBe(behind.detail)
+
+    // Can't cram ahead: 30 logged runs one week in still only earns week 1.
+    const crammed = runSession(o, NOW + 1 * WEEK, 0, 30)
+    expect(crammed.detail).toBe(runSession(o, NOW + 1 * WEEK, 0).detail)
+  })
+
+  it('grows the ruck build ramp on real walks done, not the calendar alone', () => {
+    const o = ruckObj({ targetDate: NOW + 20 * WEEK }) // build phase, ~2 rucks/wk
+    const at6wk = NOW + 6 * WEEK
+    const behind = ruckSession(o, at6wk, 0, 0)
+    const caughtUp = ruckSession(o, at6wk, 0, 12)
+    expect(behind.estMinutes).toBeLessThan(caughtUp.estMinutes)
+    expect(behind.estMinutes).toBe(ruckSession(o, NOW, 0, 0).estMinutes) // back at square one
+  })
+
+  it('planWeek feeds completed run sessions into the ladder', () => {
+    const profile = makeDefaultProfile({ frequency: 3, objectives: [runObj()] })
+    const at3wk = NOW + 3 * WEEK
+    const runOf = (plan: ReturnType<typeof planWeek>) =>
+      plan.days.flatMap((d) => d.sessions).find((s) => s.kind === 'run')!
+
+    const noHistory = runOf(planWeek(profile, at3wk, []))
+    const history: CompletedSession[] = Array.from({ length: 9 }, (_, i) => ({
+      id: `run${i}`, profileId: 'p', date: NOW + i * (WEEK / 3), title: 'Run',
+      goal: 'muscle', exercises: [], type: 'run', objectiveId: 'r',
+    }))
+    const withHistory = runOf(planWeek(profile, at3wk, history))
+
+    expect(noHistory.detail).not.toBe(withHistory.detail)
+    expect(withHistory.detail).toContain('5 min') // advanced only because runs were logged
+  })
+})
+
 describe('planWeek', () => {
   it('lays out 7 days with gym, runs, a ruck and daily mobility, keeping runs off gym days', () => {
     const profile = makeDefaultProfile({

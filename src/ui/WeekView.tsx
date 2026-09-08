@@ -3,6 +3,7 @@ import type { PlannedSession, Profile } from '../domain/types'
 import { planWeek } from '../engine'
 import { enabledObjectives, OBJECTIVE_META } from '../domain/objectives'
 import { useSession } from '../store/session'
+import { useSessions } from '../store/hooks'
 import { Screen } from './common'
 
 const KIND_ICON: Record<string, string> = { gym: '⚔️', run: '🏃', ruck: '🎒', mobility: '🧘', rest: '🌙' }
@@ -10,7 +11,8 @@ const KIND_ICON: Record<string, string> = { gym: '⚔️', run: '🏃', ruck: '�
 export function WeekView({ profile }: { profile: Profile }) {
   const navigate = useNavigate()
   const setPending = useSession((s) => s.setPendingGuided)
-  const plan = planWeek(profile)
+  const sessions = useSessions(profile.id) ?? []
+  const plan = planWeek(profile, Date.now(), sessions)
   const objs = enabledObjectives(profile)
 
   function open(s: PlannedSession) {
