@@ -21,7 +21,14 @@ function parseDate(s: string): number {
     return new Date(Number(m[3]), mo, Number(m[1]), Number(m[4]), Number(m[5])).getTime()
   }
   const d = Date.parse(s)
-  return Number.isNaN(d) ? Date.now() : d
+  if (!Number.isNaN(d)) return d
+  // Deterministic fallback: a stable hash of the raw string, so an unreadable
+  // date still yields the SAME value on every re-import. (Never Date.now() —
+  // that would give the same workout a new timestamp each time and defeat the
+  // duplicate detection in importSessions.)
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0
+  return h
 }
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()

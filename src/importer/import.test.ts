@@ -38,4 +38,24 @@ describe('importFromCsv', () => {
 
     expect(recognized).toBeGreaterThanOrEqual(2)
   })
+
+  it('is deterministic across re-imports so duplicates can be detected', () => {
+    // The de-dup key is `date|title`; both must be identical every time the same
+    // export is parsed, otherwise a re-import would look like a new workout.
+    const a = importFromCsv(SAMPLE, profile).sessions[0]
+    const b = importFromCsv(SAMPLE, profile).sessions[0]
+    expect(b.date).toBe(a.date)
+    expect(b.title).toBe(a.title)
+  })
+
+  it('gives an unreadable date a stable (not wall-clock) timestamp', () => {
+    // Regression: parseDate used to fall back to Date.now(), which handed the
+    // same workout a fresh timestamp on every import and defeated de-duplication.
+    const WEIRD = `"title","start_time","end_time","exercise_title","set_index","set_type","weight_lbs","reps","duration_seconds","rpe"
+"Mystery","not a date","also not a date","Chest Press (Machine)",0,"normal",55,8,,`
+    const a = importFromCsv(WEIRD, profile).sessions[0]
+    const b = importFromCsv(WEIRD, profile).sessions[0]
+    expect(a.date).toBe(b.date) // stable across imports
+    expect(Math.abs(a.date - Date.now())).toBeGreaterThan(1000) // not "now"
+  })
 })

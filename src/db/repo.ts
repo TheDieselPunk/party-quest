@@ -50,20 +50,32 @@ export async function sessionsFor(profileId: string): Promise<CompletedSession[]
 }
 
 /**
- * Bulk-import historical sessions (e.g. migrating from another app). Skips
- * duplicates, then rebuilds the RPG character from the full history in
- * chronological order so levels/PRs/streak reflect the imported data.
+ * A workout's identity for de-duplication: two sessions are the "same" when
+ * they started at the same time and share a title. Normalized so trivial
+ * whitespace/casing differences in a title can't sneak a duplicate through.
+ */
+function sessionKey(s: CompletedSession): string {
+  return `${s.date}|${s.title.toLowerCase().replace(/\s+/g, ' ').trim()}`
+}
+
+/**
+ * Bulk-import historical sessions (e.g. migrating from another app). Skips any
+ * workout already present — whether from an earlier import or logged in-app, and
+ * whether the duplicate is in the file or already in the database — then rebuilds
+ * the RPG character from the full history in chronological order so
+ * levels/PRs/streak reflect the imported data. Re-importing the same export is
+ * therefore safe: everything already known is reported as skipped, nothing dupes.
  */
 export async function importSessions(
   profile: Profile,
   sessions: CompletedSession[],
 ): Promise<{ added: number; skipped: number; character: Character }> {
   const existing = await db.sessions.where('profileId').equals(profile.id).toArray()
-  const seen = new Set(existing.map((s) => `${s.date}|${s.title}`))
+  const seen = new Set(existing.map(sessionKey))
   let added = 0
   let skipped = 0
   for (const s of sessions) {
-    const key = `${s.date}|${s.title}`
+    const key = sessionKey(s)
     if (seen.has(key)) { skipped++; continue }
     stampNow(s)
     await db.sessions.put(s)
