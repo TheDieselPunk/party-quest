@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import type { PlannedSession, Profile } from '../domain/types'
-import { planWeek } from '../engine'
+import { planWeek, effectiveFrequency } from '../engine'
 import { enabledObjectives, OBJECTIVE_META } from '../domain/objectives'
 import { useSession } from '../store/session'
 import { useSessions } from '../store/hooks'
@@ -14,6 +14,7 @@ export function WeekView({ profile }: { profile: Profile }) {
   const sessions = useSessions(profile.id) ?? []
   const plan = planWeek(profile, Date.now(), sessions)
   const objs = enabledObjectives(profile)
+  const freq = effectiveFrequency(profile, sessions)
 
   function open(s: PlannedSession) {
     if (s.kind === 'rest') return
@@ -41,6 +42,16 @@ export function WeekView({ profile }: { profile: Profile }) {
               {OBJECTIVE_META[o.kind].icon} {OBJECTIVE_META[o.kind].label}
             </span>
           ))}
+        </div>
+      )}
+
+      {freq.adapting && (
+        <div className="card" style={{ marginBottom: 10, borderColor: 'var(--gold)' }}>
+          <div className="muted" style={{ fontSize: 12 }}>
+            📉 Built around <b>{freq.effective} gym days</b> this week — matching your recent
+            ~{freq.avgPerWeek.toFixed(1)}×/week, not your {freq.set}× target. Hit more and it scales
+            back up automatically; lower your frequency in Settings to make it your target.
+          </div>
         </div>
       )}
 

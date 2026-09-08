@@ -2,6 +2,7 @@ import type { CompletedSession, DayPlan, PlannedSession, Profile, WeekPlan } fro
 import { findObjective } from '../domain/objectives'
 import { dayForIndex } from './templates'
 import { runSession, ruckSession } from './endurance'
+import { effectiveFrequency } from './adherence'
 import { deskResetSession } from '../data/routines'
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,9 @@ function startOfDay(now: number): number {
 
 export function planWeek(profile: Profile, now = Date.now(), history: CompletedSession[] = []): WeekPlan {
   const startDate = startOfDay(now)
-  const gymDays = gymDayPattern(profile.frequency)
+  // Plan around how often you actually train (adapts downward on a persistent
+  // shortfall), not just the target you set — so the week stops over-promising.
+  const gymDays = gymDayPattern(effectiveFrequency(profile, history, now).effective)
 
   const runObj = findObjective(profile, 'run-event')
   const ruckObj = findObjective(profile, 'load-carriage')

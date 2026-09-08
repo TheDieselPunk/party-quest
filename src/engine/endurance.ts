@@ -35,6 +35,28 @@ function earnedWeeks(createdAt: number, now: number, perWeek: number, completed?
   return Math.min(calendar, Math.floor(completed / Math.max(1, perWeek)))
 }
 
+export interface EndProgress {
+  completed: number
+  /** Weeks of progression earned by sessions actually logged. */
+  earnedWeeks: number
+  /** Weeks elapsed on the calendar. */
+  calendarWeeks: number
+  /** How far behind the calendar the earned progression is (0 = on pace). */
+  behindWeeks: number
+}
+
+export function runProgress(o: RunEventObjective, completedRuns: number, now = Date.now()): EndProgress {
+  const calendarWeeks = weeksSince(o.createdAt, now)
+  const earned = earnedWeeks(o.createdAt, now, o.daysPerWeek, completedRuns)
+  return { completed: completedRuns, earnedWeeks: earned, calendarWeeks, behindWeeks: Math.max(0, calendarWeeks - earned) }
+}
+
+export function ruckProgress(o: LoadCarriageObjective, completedRucks: number, now = Date.now()): EndProgress {
+  const calendarWeeks = weeksSince(o.createdAt, now)
+  const earned = earnedWeeks(o.createdAt, now, ruckPerWeek(o), completedRucks)
+  return { completed: completedRucks, earnedWeeks: earned, calendarWeeks, behindWeeks: Math.max(0, calendarWeeks - earned) }
+}
+
 const WARMUP: GuidedStep = { label: 'Warm-up walk', seconds: 300, instruction: 'Easy brisk walk to warm up the legs and lungs.' }
 const COOLDOWN: GuidedStep = { label: 'Cool-down walk', seconds: 300, instruction: 'Easy walk until your breathing settles, then stretch the calves and hips.' }
 

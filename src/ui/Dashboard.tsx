@@ -4,7 +4,7 @@ import type { PlannedSession, Profile } from '../domain/types'
 import { ALL_ATTRIBUTES, ATTRIBUTE_LABEL } from '../domain/types'
 import { useCharacter, useSessions, useActive } from '../store/hooks'
 import { useSession } from '../store/session'
-import { dayForIndex, weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek } from '../engine'
+import { dayForIndex, weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek, behindHeadlines } from '../engine'
 import { characterLevel, levelFromXp } from '../rpg/character'
 import { startWorkout } from '../db/repo'
 import { Bar, Screen } from './common'
@@ -31,6 +31,8 @@ export function Dashboard({ profile }: { profile: Profile }) {
     (s) => s.kind === 'run' || s.kind === 'ruck' || s.kind === 'mobility',
   )
   function openExtra(s: PlannedSession) { setPending(s); navigate('/session') }
+
+  const behind = behindHeadlines(profile, sessions)
 
   const totalTarget = Object.values(targets).reduce((a, b) => a + b, 0)
   const totalActual = Object.values(actual).reduce((a, b) => a + b, 0)
@@ -68,6 +70,24 @@ export function Dashboard({ profile }: { profile: Profile }) {
           ))}
         </div>
       </div>
+
+      {/* Behind-pace / adaptation nudges (only when there's something to catch up on) */}
+      {behind.length > 0 && (
+        <div className="card" style={{ marginTop: 14, borderColor: 'var(--gold)' }}>
+          <div className="eyebrow">Catch up</div>
+          <div className="center-col" style={{ gap: 6, marginTop: 6 }}>
+            {behind.map((b, k) => (
+              <div key={k} className="row" style={{ gap: 8, alignItems: 'center', fontSize: 13 }}>
+                <span style={{ fontSize: 16 }}>{b.icon}</span>
+                <span>{b.label}</span>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={() => navigate('/coach')}>
+            Why did the plan change? →
+          </button>
+        </div>
+      )}
 
       {/* Today's quest */}
       <div className="card" style={{ marginTop: 14 }}>

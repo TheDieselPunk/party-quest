@@ -1,6 +1,6 @@
 import type { Character, CompletedSession, Profile } from '../domain/types'
 import { ALL_MUSCLES, MUSCLE_LABEL, ALL_ATTRIBUTES, ATTRIBUTE_LABEL } from '../domain/types'
-import { weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek, runPhase, ruckPhase } from '../engine'
+import { weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek, runPhase, ruckPhase, planAdaptations } from '../engine'
 import { levelFromXp, characterLevel } from '../rpg/character'
 import { splitDays } from '../engine'
 import { enabledObjectives, weeksUntil, effectiveTargetDate, OBJECTIVE_META } from '../domain/objectives'
@@ -119,6 +119,17 @@ export function buildCoachExport(
     lines.push('')
   }
 
+  // --- Plan adaptations ----------------------------------------------------
+  // Anywhere the plan has auto-adjusted to actual logging (frequency dialed to
+  // real attendance, endurance ladders held back by missed sessions).
+  const adaptations = planAdaptations(profile, sessions, now)
+  if (adaptations.length) {
+    lines.push('## Plan adaptations (auto-adjusted to what I’ve logged)', '')
+    lines.push('The app has already adapted the plan to match what I actually did — please factor these in:', '')
+    for (const a of adaptations) lines.push(`- ${a}`)
+    lines.push('')
+  }
+
   // --- Attributes ----------------------------------------------------------
   lines.push('## Character attributes (muscle-region development)', '')
   lines.push('| Attribute | Level |', '|---|---|')
@@ -186,8 +197,11 @@ export function buildProjectInstructions(): string {
     '“Party Quest” builds my training **deterministically** from the settings below — there is no AI ' +
     'inside the app; you are the review layer on top. Each week I paste an **Adventurer’s Log**: my ' +
     'profile, weekly volume per muscle vs. target, adherence, my concurrent **Objectives**, the ' +
-    'upcoming week’s plan, character stats (a cosmetic RPG layer — ignore it for coaching), recent ' +
-    'sessions, and best estimated 1RMs. Read it and tell me what to change.', '',
+    'upcoming week’s plan, any **Plan adaptations** the app auto-made to match what I actually logged ' +
+    '(e.g. dialing frequency to real attendance, or holding an endurance ladder back for missed ' +
+    'sessions), character stats (a cosmetic RPG layer — ignore it for coaching), recent sessions, and ' +
+    'best estimated 1RMs. Read it and tell me what to change — and whether you agree with the ' +
+    'adaptations the app already made.', '',
   )
 
   L.push('## What I can actually change — make every recommendation one of these', '')
