@@ -180,7 +180,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                   {photoSrc && (
                     <div className="row" style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
                       <img src={photoSrc} alt={pe.equipmentName} loading="lazy" onClick={() => setZoom({ src: photoSrc, name: pe.equipmentName })}
-                        style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', cursor: 'zoom-in', border: '1px solid var(--edge)', flexShrink: 0 }} />
+                        style={{ width: 66, height: 66, borderRadius: 10, objectFit: 'contain', background: '#efe9dc', cursor: 'zoom-in', border: '1px solid var(--edge)', flexShrink: 0 }} />
                       <span className="muted" style={{ fontSize: 12 }}>📷 {pe.equipmentName} — tap to enlarge</span>
                     </div>
                   )}
@@ -251,10 +251,10 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
       <button className="btn btn-primary btn-block" style={{ marginTop: 4 }} onClick={finish}>🏆 Finish quest</button>
 
       {zoom && (
-        <div onClick={() => setZoom(null)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: '#000d', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <img src={zoom.src} alt={zoom.name} style={{ maxWidth: '92vw', maxHeight: '68vh', borderRadius: 16, background: '#efe9dc' }} />
-          <div style={{ color: '#fff', marginTop: 14, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>{zoom.name}</div>
-          <div style={{ color: '#bbb', marginTop: 4, fontSize: 12 }}>tap anywhere to close</div>
+        <div onClick={() => setZoom(null)} style={{ position: 'fixed', inset: 0, zIndex: 60, background: '#000d', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 10 }}>
+          <img src={zoom.src} alt={zoom.name} style={{ width: '98vw', height: '82vh', objectFit: 'contain', borderRadius: 16, background: '#efe9dc' }} />
+          <div style={{ color: '#fff', marginTop: 10, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>{zoom.name}</div>
+          <div style={{ color: '#bbb', marginTop: 2, fontSize: 12 }}>tap anywhere to close</div>
         </div>
       )}
 

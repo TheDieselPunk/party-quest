@@ -21,9 +21,20 @@
 //   bike          Stationary Bike
 
 const MACHINE_PHOTO: Record<string, string> = {
-  // 'smith': 'equipment/smith.jpg',
-  // 'matrix-legpress': 'equipment/matrix-legpress.jpg',
-  // ...add entries as photos are provided
+  'hoist-hd3300': 'equipment/hoist-hd3300.webp',
+  'hoist-hd3200': 'equipment/hoist-hd3200.webp',
+  'hoist-hd3400': 'equipment/hoist-hd3400.webp',
+  'hoist-hd3600': 'equipment/hoist-hd3600.webp',
+  'hoist-hd3000': 'equipment/hoist-hd3000.webp',
+  'matrix-hipab': 'equipment/matrix-hipab.webp',
+  'matrix-legpress': 'equipment/matrix-legpress.webp',
+  'smith': 'equipment/smith.webp',
+  'bench-adj': 'equipment/bench-adj.webp',
+  'ab-bench': 'equipment/ab-bench.webp',
+  'stairmaster': 'equipment/stairmaster.webp',
+  'treadmill': 'equipment/treadmill.webp',
+  'elliptical': 'equipment/elliptical.webp',
+  'bike': 'equipment/bike.webp',
 }
 
 export function machinePhoto(equipmentId: string): string | undefined {
