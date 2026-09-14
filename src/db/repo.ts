@@ -2,7 +2,7 @@ import type {
   Character, CompletedSession, LoggedExercise, PrescribedExercise, Profile, SessionType,
 } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
-import { logsFromPlan } from '../domain/active'
+import { logsFromPlan, elapsedMs } from '../domain/active'
 import { db } from './db'
 import { makeDefaultProfile } from '../domain/defaults'
 import { emptyCharacter, applySession, type SessionRewards } from '../rpg/character'
@@ -235,7 +235,7 @@ export async function finishWorkout(
     title: active.plan.title,
     goal: active.plan.goal,
     exercises,
-    durationSeconds: Math.round((Date.now() - active.startedAt) / 1000),
+    durationSeconds: Math.round(elapsedMs(active) / 1000),
   })
 
   const character = (await db.characters.get(profile.id)) ?? emptyCharacter(profile.id)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Profile, PrescribedExercise } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
+import { elapsedMs } from '../domain/active'
 import { db } from '../db/db'
 import { saveActive, swapExercise, finishWorkout, discardActive } from '../db/repo'
 import { EXERCISES_BY_ID } from '../data/exercises'
@@ -37,7 +38,9 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
   useEffect(() => { db.active.get(profile.id).then((a) => setActive(a ?? null)) }, [profile.id])
   useEffect(() => {
     if (!active) return
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - active.startedAt) / 1000)), 1000)
+    const tick = () => setElapsed(Math.floor(elapsedMs(active) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [active])
 
@@ -63,10 +66,26 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
 
   function persist(next: ActiveWorkout) { setActive(next); void saveActive(next) }
 
+  const paused = active?.pausedAt != null
+
+  /** Fields that resume a paused timer (banking the paused span); empty if running. */
+  function resumeFields(a: ActiveWorkout): Partial<ActiveWorkout> {
+    return a.pausedAt != null
+      ? { pausedTotalMs: (a.pausedTotalMs ?? 0) + (Date.now() - a.pausedAt), pausedAt: undefined }
+      : {}
+  }
+
+  function togglePause() {
+    if (!active) return
+    if (active.pausedAt != null) persist({ ...active, ...resumeFields(active) })
+    else persist({ ...active, pausedAt: Date.now() })
+  }
+
   function updateSet(exIdx: number, setIdx: number, patch: Partial<ActiveWorkout['logs'][0][0]>) {
     if (!active) return
     const logs = active.logs.map((l, i) => (i === exIdx ? l.map((s, j) => (j === setIdx ? { ...s, ...patch } : s)) : l))
-    persist({ ...active, logs })
+    // Logging a set means you're training again — auto-resume if paused.
+    persist({ ...active, logs, ...resumeFields(active) })
   }
 
   function markDone(exIdx: number, setIdx: number) {
@@ -115,10 +134,16 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
       {/* Header */}
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
         <button className="btn btn-sm btn-ghost" onClick={abandon}>✕</button>
-        <div style={{ textAlign: 'center' }}>
+        <button onClick={togglePause} title={paused ? 'Resume workout' : 'Pause workout'}
+          style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'center', cursor: 'pointer', padding: 0 }}>
           <div className="eyebrow" style={{ margin: 0 }}>{plan.busy ? 'Busy — 1-machine supersets' : 'Quiet — cross-machine supersets'}</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{fmtSeconds(elapsed)}</div>
-        </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, color: paused ? 'var(--gold)' : 'inherit' }}>
+            {paused ? '⏸ ' : ''}{fmtSeconds(elapsed)}
+          </div>
+          <div className="eyebrow" style={{ margin: 0, color: paused ? 'var(--gold)' : 'var(--text-dim)', fontSize: 9 }}>
+            {paused ? 'paused — tap to resume' : 'tap to pause'}
+          </div>
+        </button>
         <button className="btn btn-sm btn-primary" onClick={finish}>Finish</button>
       </div>
       <h1 style={{ fontSize: 20, margin: '0 0 2px' }}>{plan.title}</h1>

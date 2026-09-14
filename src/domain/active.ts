@@ -7,6 +7,16 @@ export interface ActiveWorkout {
   plan: WorkoutPlan
   /** Logged sets aligned to plan.exercises[i].sets[j]. */
   logs: LoggedSet[][]
+  /** When the session timer was paused (ms); undefined = running. */
+  pausedAt?: number
+  /** Accumulated paused time (ms) across earlier pauses. */
+  pausedTotalMs?: number
+}
+
+/** Session time actually spent training — total elapsed minus any paused time. */
+export function elapsedMs(active: ActiveWorkout, now = Date.now()): number {
+  const paused = (active.pausedTotalMs ?? 0) + (active.pausedAt != null ? now - active.pausedAt : 0)
+  return Math.max(0, now - active.startedAt - paused)
 }
 
 /** Seed editable log rows from a freshly generated plan. */
