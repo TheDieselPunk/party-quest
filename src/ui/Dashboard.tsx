@@ -106,11 +106,17 @@ export function Dashboard({ profile }: { profile: Profile }) {
           </>
         ) : (
           <>
-            <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
+            <div className="center-col" style={{ gap: 6, marginBottom: 12, alignItems: 'stretch' }}>
               <span style={{ fontSize: 14, fontWeight: 600 }}>Gym is busy right now?</span>
-              <button className="chip" aria-pressed={busy} onClick={() => setBusy((b) => !b)}>
-                {busy ? 'Busy — solo sets' : 'Quiet — allow supersets'}
-              </button>
+              <div className="chips">
+                <button className="chip" aria-pressed={busy} onClick={() => setBusy(true)}>Busy</button>
+                <button className="chip" aria-pressed={!busy} onClick={() => setBusy(false)}>Quiet</button>
+              </div>
+              <span className="muted" style={{ fontSize: 12 }}>
+                {busy
+                  ? 'Supersets stay on one machine, so you finish and free it up faster.'
+                  : 'Supersets can pair across two machines for efficiency.'}
+              </span>
             </div>
             <button className="btn btn-primary btn-block" disabled={starting} onClick={begin}>
               {starting ? 'Rolling…' : '⚔️ Start quest'}

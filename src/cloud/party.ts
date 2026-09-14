@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Attribute, Character } from '../domain/types'
+import type { Attribute, Character, Profile } from '../domain/types'
 import { ALL_ATTRIBUTES } from '../domain/types'
 
 export interface PartyMember {
@@ -13,52 +13,37 @@ function totalXp(c: Character | undefined): number {
   return ALL_ATTRIBUTES.reduce((sum, a: Attribute) => sum + (c.xp?.[a] ?? 0), 0)
 }
 
-/** The party this user belongs to, if any (RLS returns only my parties). */
-export async function myParty(): Promise<{ partyId: string; code: string } | null> {
-  if (!supabase) return null
-  const { data, error } = await supabase.from('parties').select('id, code').limit(1)
-  if (error || !data || !data.length) return null
-  return { partyId: data[0].id as string, code: data[0].code as string }
-}
-
-export async function createParty(displayName: string): Promise<{ partyId: string; code: string }> {
-  if (!supabase) throw new Error('Cloud is not configured.')
-  const { data, error } = await supabase.rpc('create_party', { member_name: displayName })
-  if (error) throw error
-  const row = (Array.isArray(data) ? data[0] : data) as { party_id: string; code: string }
-  return { partyId: row.party_id, code: row.code }
-}
-
-export async function joinParty(code: string, displayName: string): Promise<void> {
-  if (!supabase) throw new Error('Cloud is not configured.')
-  const { error } = await supabase.rpc('join_party', { join_code: code.trim(), member_name: displayName })
-  if (error) throw error
-}
-
-export async function leaveParty(partyId: string): Promise<void> {
-  if (!supabase) return
-  const { data: u } = await supabase.auth.getUser()
-  if (!u.user) return
-  await supabase.from('party_members').delete().eq('party_id', partyId).eq('user_id', u.user.id)
-}
-
-/** Members of a party + a representative (highest-level) character each. */
-export async function fetchPartyMembers(partyId: string): Promise<PartyMember[]> {
+/**
+ * Everyone in the guild. Account sign-up is gated by a shared invite code, so
+ * every user is a trusted member of one implicit party — there's no create/join
+ * step; we simply show them all. One entry per user: their highest-level
+ * character and its adventurer name. (Read access to all profiles/characters is
+ * granted by RLS — see supabase/schema.sql.)
+ */
+export async function fetchGuild(): Promise<PartyMember[]> {
   if (!supabase) return []
-  const { data: members } = await supabase
-    .from('party_members').select('user_id, display_name').eq('party_id', partyId)
-  if (!members) return []
-  const userIds = members.map((m) => m.user_id as string)
-  const { data: chars } = await supabase.from('characters').select('user_id, data').in('user_id', userIds)
+  const [{ data: chars }, { data: profs }] = await Promise.all([
+    supabase.from('characters').select('user_id, profile_id, data'),
+    supabase.from('profiles').select('id, data'),
+  ])
 
-  const byUser = new Map<string, Character>()
-  for (const c of (chars ?? []) as Array<{ user_id: string; data: Character }>) {
-    const existing = byUser.get(c.user_id)
-    if (!existing || totalXp(c.data) > totalXp(existing)) byUser.set(c.user_id, c.data)
+  const nameByProfile = new Map<string, string>()
+  for (const p of (profs ?? []) as Array<{ id: string; data: Profile }>) {
+    nameByProfile.set(p.id, p.data?.characterName ?? 'Adventurer')
   }
-  return members.map((m) => ({
-    userId: m.user_id as string,
-    displayName: (m.display_name as string) ?? 'Adventurer',
-    character: byUser.get(m.user_id as string),
-  }))
+
+  // Keep the highest-XP character per user as their representative.
+  const best = new Map<string, { profileId: string; char: Character }>()
+  for (const c of (chars ?? []) as Array<{ user_id: string; profile_id: string; data: Character }>) {
+    const cur = best.get(c.user_id)
+    if (!cur || totalXp(c.data) > totalXp(cur.char)) best.set(c.user_id, { profileId: c.profile_id, char: c.data })
+  }
+
+  return [...best.entries()]
+    .map(([userId, { profileId, char }]) => ({
+      userId,
+      displayName: nameByProfile.get(profileId) ?? 'Adventurer',
+      character: char,
+    }))
+    .sort((a, b) => totalXp(b.character) - totalXp(a.character))
 }

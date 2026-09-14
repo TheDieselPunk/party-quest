@@ -98,21 +98,24 @@ alter table public.sessions      enable row level security;
 alter table public.parties       enable row level security;
 alter table public.party_members enable row level security;
 
--- profiles: own rows read/write; party members may read
+-- profiles: own rows read/write; every signed-in user may read all (one guild).
+-- Sign-up is gated by the shared invite code, so all accounts are trusted.
 drop policy if exists profiles_own on public.profiles;
 create policy profiles_own on public.profiles
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists profiles_party_read on public.profiles;
-create policy profiles_party_read on public.profiles
-  for select using (user_id in (select public.my_party_user_ids()));
+drop policy if exists profiles_guild_read on public.profiles;
+create policy profiles_guild_read on public.profiles
+  for select using (auth.uid() is not null);
 
--- characters: own rows read/write; party members may read
+-- characters: own rows read/write; every signed-in user may read all.
 drop policy if exists characters_own on public.characters;
 create policy characters_own on public.characters
   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists characters_party_read on public.characters;
-create policy characters_party_read on public.characters
-  for select using (user_id in (select public.my_party_user_ids()));
+drop policy if exists characters_guild_read on public.characters;
+create policy characters_guild_read on public.characters
+  for select using (auth.uid() is not null);
 
 -- sessions: strictly own rows
 drop policy if exists sessions_own on public.sessions;

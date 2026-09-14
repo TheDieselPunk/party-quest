@@ -116,7 +116,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
         <button className="btn btn-sm btn-ghost" onClick={abandon}>✕</button>
         <div style={{ textAlign: 'center' }}>
-          <div className="eyebrow" style={{ margin: 0 }}>{plan.busy ? 'Busy mode' : 'Quiet — supersets on'}</div>
+          <div className="eyebrow" style={{ margin: 0 }}>{plan.busy ? 'Busy — 1-machine supersets' : 'Quiet — cross-machine supersets'}</div>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>{fmtSeconds(elapsed)}</div>
         </div>
         <button className="btn btn-sm btn-primary" onClick={finish}>Finish</button>
