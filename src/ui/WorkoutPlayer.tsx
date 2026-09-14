@@ -153,6 +153,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
               const pe = plan.exercises[exIdx]
               const meta = EXERCISES_BY_ID[pe.exerciseId]
               const showLoad = meta?.loadBasis !== 'bodyweight' && pe.kind !== 'conditioning'
+              const isCalib = pe.sets.some((s) => s.calibration)
               const gif = gifFor(pe.exerciseId)
               return (
                 <div key={exIdx} style={{ padding: 14, borderTop: k > 0 ? '1px dashed var(--edge)' : undefined }}>
@@ -180,6 +181,18 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                     </div>
                   )}
                   {pe.cues && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>💡 {pe.cues}</div>}
+
+                  {/* why this weight — the engine's recommendation reason */}
+                  {showLoad && pe.rationale && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.4 }}>
+                      {isCalib && (
+                        <span style={{ display: 'inline-block', background: '#00000030', borderRadius: 8, padding: '2px 7px', color: 'var(--gold-soft)', fontWeight: 700, marginRight: 6 }}>
+                          ≈ Estimate
+                        </span>
+                      )}
+                      {pe.rationale}
+                    </div>
+                  )}
 
                   {/* set table */}
                   <div style={{ marginTop: 10 }}>
