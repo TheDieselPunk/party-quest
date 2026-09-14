@@ -9,7 +9,7 @@ import {
   SUPERSET_TRANSITION_SECONDS, CONDITIONING_ROUND_SECONDS,
 } from './params'
 import { recommendLoad, snapLoad, type HistoryIndex } from './weight'
-import { enabledObjectives } from '../domain/objectives'
+import { findObjective } from '../domain/objectives'
 
 export interface GenerateOptions {
   busy?: boolean
@@ -55,18 +55,26 @@ function ensurePick(id: string, pool: Exercise[], used: Set<string>, picks: Pick
 
 /**
  * Bias the day toward the profile's objectives: posture adds pulling/rotator
- * work (so you pull more than you press), and load-carriage adds a loaded carry
- * plus back-extension endurance. Added as accessories — the time-fit pass keeps
- * them when there's room and trims them first on a tight day (off-gym sessions
- * still cover these objectives).
+ * work (so you pull more than you press); its anterior-pelvic-tilt add-on also
+ * adds a glute strengthener and anti-extension core (never more low-back
+ * extension — the erectors are already overactive in that pattern). Load-carriage
+ * adds a loaded carry plus back-extension endurance. Added as accessories — the
+ * time-fit pass keeps them when there's room and trims them first on a tight day
+ * (off-gym sessions still cover these objectives).
  */
 function applyObjectiveBias(profile: Profile, pool: Exercise[], used: Set<string>, picks: Picked[]): void {
-  const objs = enabledObjectives(profile)
-  if (objs.some((o) => o.kind === 'posture')) {
+  const posture = findObjective(profile, 'posture')
+  if (posture) {
     if (!picks.some((p) => p.exercise.pattern === 'rear-delt')) ensurePick('face-pull', pool, used, picks)
     ensurePick('cable-external-rotation', pool, used, picks)
+    if (posture.anteriorPelvicTilt) {
+      if (!picks.some((p) => p.exercise.muscles.some((m) => m.role === 'primary' && m.muscle === 'glutes'))) {
+        ensurePick('smith-hip-thrust', pool, used, picks)
+      }
+      if (!picks.some((p) => p.exercise.pattern === 'core-anti-extension')) ensurePick('plank', pool, used, picks)
+    }
   }
-  if (objs.some((o) => o.kind === 'load-carriage')) {
+  if (findObjective(profile, 'load-carriage')) {
     ensurePick('farmer-carry', pool, used, picks)
     ensurePick('low-back-ext', pool, used, picks)
   }

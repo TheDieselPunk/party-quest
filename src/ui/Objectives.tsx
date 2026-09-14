@@ -55,10 +55,17 @@ export function Objectives({ value, onChange }: { value: Objective[]; onChange: 
           </div>
 
           {o.kind === 'posture' && (
-            <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13 }}>
-              <input type="checkbox" checked={o.dailyReset} onChange={(e) => update(o.id, { dailyReset: e.target.checked })} />
-              Include a short daily <b>&nbsp;Desk Reset&nbsp;</b> mobility flow
-            </label>
+            <div className="center-col" style={{ gap: 8, marginTop: 10 }}>
+              <label className="row" style={{ gap: 8, fontSize: 13 }}>
+                <input type="checkbox" checked={o.dailyReset} onChange={(e) => update(o.id, { dailyReset: e.target.checked })} />
+                Include a short daily <b>&nbsp;Desk Reset&nbsp;</b> mobility flow
+              </label>
+              <label className="row" style={{ gap: 8, fontSize: 13, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={!!o.anteriorPelvicTilt} style={{ marginTop: 2 }}
+                  onChange={(e) => update(o.id, { anteriorPelvicTilt: e.target.checked })} />
+                <span>Also correct <b>anterior pelvic tilt</b> — adds posterior pelvic-tilt &amp; dead-bug to the reset and glute + deep-core work to gym days.</span>
+              </label>
+            </div>
           )}
 
           {o.kind === 'run-event' && (

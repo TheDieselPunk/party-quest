@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { makeDefaultProfile } from '../domain/defaults'
-import { planWeek, runPhase, runSession, ruckPhase, ruckSession } from './index'
+import { planWeek, runPhase, runSession, ruckPhase, ruckSession, generateWorkout } from './index'
+import { deskResetSession } from '../data/routines'
+import { EXERCISES_BY_ID } from '../data/exercises'
 import { applySession, emptyCharacter } from '../rpg/character'
 import type {
   CompletedSession, LoadCarriageObjective, PostureObjective, RunEventObjective,
@@ -143,6 +145,35 @@ describe('planWeek', () => {
     expect(kinds.has('gym')).toBe(true)
     expect(kinds.has('rest')).toBe(true)
     expect(kinds.has('mobility')).toBe(false)
+  })
+})
+
+describe('anterior pelvic tilt correction', () => {
+  const aptPosture = (): PostureObjective => ({
+    id: 'p', kind: 'posture', enabled: true, createdAt: NOW, dailyReset: true, anteriorPelvicTilt: true,
+  })
+
+  it('adds posterior pelvic tilt + dead bug to the Desk Reset, after the hip-flexor stretch', () => {
+    const labels = (s: ReturnType<typeof deskResetSession>) => (s.steps ?? []).map((x) => x.label)
+    const base = labels(deskResetSession('p'))
+    const apt = labels(deskResetSession('p', { anteriorPelvicTilt: true }))
+
+    expect(base).not.toContain('Dead bug')
+    expect(apt).toContain('Posterior pelvic tilts')
+    expect(apt).toContain('Dead bug')
+    const hip = apt.findIndex((l) => /hip-flexor/i.test(l))
+    expect(apt[hip + 1]).toBe('Posterior pelvic tilts') // inserted right after it
+    expect(deskResetSession('p', { anteriorPelvicTilt: true }).estMinutes)
+      .toBeGreaterThanOrEqual(deskResetSession('p').estMinutes)
+  })
+
+  it('biases gym days toward glutes + anti-extension core', () => {
+    const profile = makeDefaultProfile({ location: 'gym', sessionMinutes: 90, objectives: [aptPosture()] })
+    const plan = generateWorkout(profile, { dayIndex: 0 })
+    const hasGlutePrimary = plan.exercises.some((pe) => pe.muscles.some((m) => m.role === 'primary' && m.muscle === 'glutes'))
+    const hasAntiExtCore = plan.exercises.some((pe) => EXERCISES_BY_ID[pe.exerciseId]?.pattern === 'core-anti-extension')
+    expect(hasGlutePrimary).toBe(true)
+    expect(hasAntiExtCore).toBe(true)
   })
 })
 

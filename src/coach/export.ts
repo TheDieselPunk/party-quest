@@ -95,7 +95,10 @@ export function buildCoachExport(
     for (const o of objectives) {
       const meta = OBJECTIVE_META[o.kind]
       if (o.kind === 'posture') {
-        lines.push(`- ${meta.icon} **Posture** — daily Desk Reset ${o.dailyReset ? 'on' : 'off'}; gym sessions biased toward pulling, rotator-cuff and thoracic work.`)
+        const apt = o.anteriorPelvicTilt
+          ? ' · **anterior-pelvic-tilt correction on** (reset adds posterior pelvic tilt + dead-bug; gym adds glutes & anti-extension core)'
+          : ''
+        lines.push(`- ${meta.icon} **Posture** — daily Desk Reset ${o.dailyReset ? 'on' : 'off'}${apt}; gym sessions biased toward pulling, rotator-cuff and thoracic work.`)
       } else if (o.kind === 'run-event') {
         const w = weeksUntil(o.targetDate, now)
         lines.push(`- ${meta.icon} **${o.distanceKm}K run** — ${dateStr(o.targetDate)} (${w} weeks out) · phase **${runPhase(o, now)}** · can jog ~${o.baselineRunMinutes} min non-stop now · ${o.daysPerWeek} run days/wk.`)
@@ -220,7 +223,7 @@ export function buildProjectInstructions(): string {
   L.push('- **Per-exercise swap:** in any workout I can swap a lift for a listed alternative on the same equipment')
   L.push('')
   L.push('**Objectives** (these bias my gym days *and* schedule my off-gym days):')
-  L.push('- **Posture:** on/off; toggle the short daily Desk Reset mobility flow')
+  L.push('- **Posture:** on/off; toggle the short daily Desk Reset mobility flow; optional anterior-pelvic-tilt correction (adds glute + deep-core / posterior-pelvic-tilt work)')
   L.push('- **Run event:** race date · distance (km) · minutes I can jog non-stop now · run days/week (2–5)')
   L.push('- **Load carriage:** event name · date · target pack weight (lb) · days on feet (1–7) · repeats annually')
   L.push('')

@@ -333,6 +333,12 @@ export interface PostureObjective extends ObjectiveCommon {
   kind: 'posture'
   /** Include the short daily desk-reset mobility flow in the plan. */
   dailyReset: boolean
+  /**
+   * Also target anterior pelvic tilt (Janda "lower-crossed"): adds posterior
+   * pelvic-tilt + dead-bug to the daily reset and biases gym days toward glute
+   * and anti-extension core work on top of the upper-body posture bias.
+   */
+  anteriorPelvicTilt?: boolean
 }
 
 export interface RunEventObjective extends ObjectiveCommon {
