@@ -128,7 +128,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
 
       <div className="muted" style={{ fontSize: 12, marginBottom: 14, lineHeight: 1.45 }}>
         <b>RIR</b> = reps in reserve — how many more reps you could’ve done before failing (0 = to failure).
-        Log it per set; aim for about <b>{profile.rirTarget}</b>.
+        Optional: it gates weight increases (leave blank to just use your reps). Aim for about <b>{profile.rirTarget}</b>.
       </div>
 
       {plan.warmup.length > 0 && (
