@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { useSession } from './session'
@@ -30,4 +31,19 @@ export function useActive(profileId: string | null | undefined): ActiveWorkout |
 
 export function useAllCharacters(): Character[] | undefined {
   return useLiveQuery(() => db.characters.toArray(), [])
+}
+
+/** Object-URL map of stored machine photos, keyed by equipment id. URLs are
+ *  created when the photos change and revoked on cleanup to avoid leaks. */
+export function useEquipmentPhotos(): Record<string, string> {
+  const rows = useLiveQuery(() => db.equipmentPhotos.toArray(), [])
+  const [urls, setUrls] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!rows) return
+    const map: Record<string, string> = {}
+    for (const r of rows) map[r.equipmentId] = URL.createObjectURL(r.blob)
+    setUrls(map)
+    return () => { for (const u of Object.values(map)) URL.revokeObjectURL(u) }
+  }, [rows])
+  return urls
 }

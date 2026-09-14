@@ -11,6 +11,14 @@ export interface OutboxItem {
   ts: number
 }
 
+/** A user-taken photo of a real gym machine, keyed by equipment id. Local-only
+ *  (device-specific; not part of cloud sync) — the JPEG blob lives in IndexedDB. */
+export interface EquipmentPhoto {
+  equipmentId: string
+  blob: Blob
+  updatedAt: number
+}
+
 // Local-first storage. Everything lives on-device (IndexedDB); the cloud layer
 // (src/cloud) syncs it when signed in.
 class PartyQuestDB extends Dexie {
@@ -19,6 +27,7 @@ class PartyQuestDB extends Dexie {
   sessions!: Table<CompletedSession, string>
   active!: Table<ActiveWorkout, string> // keyed by profileId
   outbox!: Table<OutboxItem, string> // keyed by key
+  equipmentPhotos!: Table<EquipmentPhoto, string> // keyed by equipmentId
 
   constructor() {
     super('party-quest')
@@ -30,6 +39,9 @@ class PartyQuestDB extends Dexie {
     })
     this.version(2).stores({
       outbox: 'key, ts',
+    })
+    this.version(3).stores({
+      equipmentPhotos: 'equipmentId',
     })
   }
 }

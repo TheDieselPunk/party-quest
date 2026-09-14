@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Profile, PrescribedExercise } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
 import { db } from '../db/db'
 import { saveActive, swapExercise, finishWorkout, discardActive } from '../db/repo'
+import { setEquipmentPhoto } from '../db/photos'
+import { useEquipmentPhotos } from '../store/hooks'
 import { EXERCISES_BY_ID } from '../data/exercises'
+import { EQUIPMENT_BY_ID } from '../data/equipment'
 import { gifFor } from '../data/gifs'
 import type { SessionRewards } from '../rpg/character'
 import { RestTimer } from './RestTimer'
@@ -32,6 +35,14 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
   const [rewards, setRewards] = useState<SessionRewards | null>(null)
   const [zoom, setZoom] = useState<{ src: string; name: string } | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  const machinePhotos = useEquipmentPhotos()
+
+  async function onMachinePhoto(equipmentId: string, e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try { await setEquipmentPhoto(equipmentId, file) } catch { /* capture/decoding failed */ }
+  }
 
   useEffect(() => { db.active.get(profile.id).then((a) => setActive(a ?? null)) }, [profile.id])
   useEffect(() => {
@@ -155,6 +166,8 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
               const showLoad = meta?.loadBasis !== 'bodyweight' && pe.kind !== 'conditioning'
               const isCalib = pe.sets.some((s) => s.calibration)
               const gif = gifFor(pe.exerciseId)
+              const isMachineEx = !!EQUIPMENT_BY_ID[pe.equipmentId]?.isMachine
+              const machinePhoto = machinePhotos[pe.equipmentId]
               return (
                 <div key={exIdx} style={{ padding: 14, borderTop: k > 0 ? '1px dashed var(--edge)' : undefined }}>
                   <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -174,6 +187,29 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                       <span className="tag" style={{ flexShrink: 0 }}>{repLabel(pe, pe.sets.find((s) => !s.warmup)?.reps ?? [0, 0])} · {Math.round(pe.restSeconds / 15) * 15 / 60 >= 1 ? `${(pe.restSeconds / 60).toFixed(1)}m` : `${pe.restSeconds}s`} rest</span>
                     )}
                   </div>
+
+                  {isMachineEx && (
+                    <div className="row" style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
+                      {machinePhoto ? (
+                        <>
+                          <img src={machinePhoto} alt={`${pe.equipmentName} photo`} onClick={() => setZoom({ src: machinePhoto, name: pe.equipmentName })}
+                            style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', cursor: 'zoom-in', border: '1px solid var(--edge)', flexShrink: 0 }} />
+                          <div className="center-col" style={{ gap: 3, alignItems: 'flex-start' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600 }}>📷 Your machine — tap to enlarge</span>
+                            <label className="btn btn-sm btn-ghost" style={{ cursor: 'pointer' }}>
+                              Replace photo
+                              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(e) => onMachinePhoto(pe.equipmentId, e)} />
+                            </label>
+                          </div>
+                        </>
+                      ) : (
+                        <label className="btn btn-sm" style={{ cursor: 'pointer' }}>
+                          📷 Add a photo of this machine
+                          <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={(e) => onMachinePhoto(pe.equipmentId, e)} />
+                        </label>
+                      )}
+                    </div>
+                  )}
 
                   {pe.modeSetup && (
                     <div style={{ marginTop: 8, fontSize: 13, background: '#0000002e', borderRadius: 10, padding: '8px 10px', borderLeft: '3px solid var(--gold)' }}>
