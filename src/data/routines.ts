@@ -70,12 +70,14 @@ const APT_STEPS: GuidedStep[] = [
   {
     label: 'Posterior pelvic tilts',
     reps: 12,
+    art: 'posterior-pelvic-tilt',
     instruction: 'On your back, knees bent. Gently flatten your low back into the floor by tucking your tailbone (tilt the pelvis back), hold 3s, release. The core motor skill for undoing an anterior pelvic tilt.',
   },
   {
     label: 'Dead bug',
     reps: 10,
     perSide: true,
+    art: 'dead-bug',
     instruction: 'On your back, arms toward the ceiling, knees bent 90°. Keeping your low back pressed flat, slowly lower the opposite arm and leg, then switch sides. Builds the deep core that holds your pelvis level against the tilt.',
   },
 ]

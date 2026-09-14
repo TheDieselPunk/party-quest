@@ -12,6 +12,10 @@ const MOBILITY_VIDEO: Record<string, string> = {
   'hip-flexor': 'mobility/hip-flexor.mp4',
   'glute-bridge': 'mobility/glute-bridge.mp4',
   'cat-cow': 'mobility/cat-cow.mp4',
+  // Anterior-pelvic-tilt add-on (posterior tilt = on-style Veo render; dead-bug
+  // = the illustrated FitnessProgrammer style, accurate but not the 3D set).
+  'posterior-pelvic-tilt': 'mobility/posterior-pelvic-tilt.mp4',
+  'dead-bug': 'mobility/dead-bug.mp4',
 }
 
 export function mobilityVideo(art?: string): string | undefined {
