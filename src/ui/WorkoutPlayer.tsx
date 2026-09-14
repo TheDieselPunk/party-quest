@@ -124,7 +124,12 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
       <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
         {doneSets}/{totalSets} sets · ~{plan.estMinutes} min planned
       </div>
-      <div className="bar bar-vol" style={{ marginBottom: 14 }}><i style={{ width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%` }} /></div>
+      <div className="bar bar-vol" style={{ marginBottom: 10 }}><i style={{ width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%` }} /></div>
+
+      <div className="muted" style={{ fontSize: 12, marginBottom: 14, lineHeight: 1.45 }}>
+        <b>RIR</b> = reps in reserve — how many more reps you could’ve done before failing (0 = to failure).
+        Log it per set; aim for about <b>{profile.rirTarget}</b>.
+      </div>
 
       {plan.warmup.length > 0 && (
         <details className="card" style={{ marginBottom: 12 }}>
@@ -193,6 +198,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                         <input className="pill-input" inputMode="numeric" value={s.reps}
                           onChange={(e) => updateSet(exIdx, setIdx, { reps: Number(e.target.value) || 0 })} />
                         <input className="pill-input" inputMode="numeric" value={s.rir ?? ''} placeholder="–"
+                          aria-label="Reps in reserve" title="RIR — reps in reserve (how many more you could do)"
                           onChange={(e) => updateSet(exIdx, setIdx, { rir: e.target.value === '' ? null : Number(e.target.value) })} />
                         <button className="btn btn-sm" style={s.done ? { background: 'var(--moss)', color: '#10240c', borderColor: '#4c7a3f' } : undefined}
                           onClick={() => markDone(exIdx, setIdx)}>{s.done ? '✓' : ''}</button>
