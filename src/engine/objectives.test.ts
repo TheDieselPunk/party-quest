@@ -159,10 +159,12 @@ describe('anterior pelvic tilt correction', () => {
     const apt = labels(deskResetSession('p', { anteriorPelvicTilt: true }))
 
     expect(base).not.toContain('Dead bug')
+    expect(base).not.toContain('Ribs-down breathing')
     expect(apt).toContain('Posterior pelvic tilts')
     expect(apt).toContain('Dead bug')
+    // the whole block is inserted right after the hip-flexor stretch, breathing first
     const hip = apt.findIndex((l) => /hip-flexor/i.test(l))
-    expect(apt[hip + 1]).toBe('Posterior pelvic tilts') // inserted right after it
+    expect(apt.slice(hip + 1, hip + 4)).toEqual(['Ribs-down breathing', 'Posterior pelvic tilts', 'Dead bug'])
     expect(deskResetSession('p', { anteriorPelvicTilt: true }).estMinutes)
       .toBeGreaterThanOrEqual(deskResetSession('p').estMinutes)
   })

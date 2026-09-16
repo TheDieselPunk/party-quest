@@ -3,18 +3,20 @@ import type { GuidedStep, PlannedSession } from '../domain/types'
 // ---------------------------------------------------------------------------
 // Guided mobility routines for the posture objective. The "Desk Reset" targets
 // the classic desk pattern (upper-cross: forward head, rounded shoulders, stiff
-// thoracic; plus tight hip flexors): activate the deep neck flexors, lower traps
-// and glutes; open the chest, t-spine and hip flexors. ~7 minutes, safe daily.
-// With the anterior-pelvic-tilt add-on it also trains posterior pelvic tilt and
-// deep-core control (the lower-cross other half).
+// thoracic; plus tight hip flexors): deep neck-flexor ENDURANCE (a hold, not
+// reps — that's the trained quality), serratus + lower trap for scapular
+// upward rotation, mid-trap/rear delt, and glutes; open the chest, t-spine and
+// hip flexors. ~10 minutes, safe daily. With the anterior-pelvic-tilt add-on it
+// also trains ribs-down breathing, posterior pelvic tilt and deep-core control
+// (the lower-cross other half).
 // ---------------------------------------------------------------------------
 
 const STEPS: GuidedStep[] = [
   {
-    label: 'Chin tucks',
-    reps: 10,
+    label: 'Chin-tuck hold',
+    seconds: 30,
     art: 'chin-tuck',
-    instruction: 'Sitting or standing tall, gently draw your head straight back (make a "double chin"), hold 2s, release. Wakes up the deep neck flexors that fight forward head.',
+    instruction: 'Draw your head straight back into a "double chin" and HOLD, breathing normally, eyes level. The deep neck flexors are endurance muscles, so the hold is the point — build toward a solid 30s. Lying on your back with the head resting down is the harder progression.',
   },
   {
     label: 'Doorway pec stretch',
@@ -28,6 +30,16 @@ const STEPS: GuidedStep[] = [
     reps: 10,
     art: 'wall-slide',
     instruction: 'Back to a wall, arms in a "goalpost". Slide them up and down keeping wrists and elbows on the wall. Trains the lower/mid traps to set your shoulders back.',
+  },
+  {
+    label: 'Push-up plus (serratus)',
+    reps: 10,
+    instruction: 'From a push-up position (on your knees is fine), keep the elbows straight and push the floor away so the shoulder blades spread apart, then let them settle back together. Only those last few inches — that\'s the serratus, which upward-rotates the shoulder blade so your shoulders can actually sit back.',
+  },
+  {
+    label: 'Prone Y-raise (lower trap)',
+    reps: 10,
+    instruction: 'Face-down on the floor, arms overhead in a wide "Y", thumbs pointing up. Lift the arms a few inches WITHOUT shrugging — think of sliding the shoulder blades down your back. No weight needed; the lower trap is small and control is the point.',
   },
   {
     label: 'Thoracic extension',
@@ -67,6 +79,11 @@ const STEPS: GuidedStep[] = [
 // posterior-pelvic-tilt motor skill and the deep-core strength to hold it.
 // Inserted right after the hip-flexor stretch. Text-only for now (no demo clip).
 const APT_STEPS: GuidedStep[] = [
+  {
+    label: 'Ribs-down breathing',
+    seconds: 60,
+    instruction: 'On your back, knees bent. Exhale slowly and fully through pursed lips and feel your front ribs settle DOWN toward your pelvis — then keep them there as you breathe quietly in through your nose, into your lower ribs and back. This sets the ribs-over-pelvis stack that the tilt and dead-bug work below depend on.',
+  },
   {
     label: 'Posterior pelvic tilts',
     reps: 12,
