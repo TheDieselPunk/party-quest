@@ -65,6 +65,11 @@ export function Objectives({ value, onChange }: { value: Objective[]; onChange: 
                   onChange={(e) => update(o.id, { anteriorPelvicTilt: e.target.checked })} />
                 <span>Also correct <b>anterior pelvic tilt</b> — adds posterior pelvic-tilt &amp; dead-bug to the reset and glute + deep-core work to gym days.</span>
               </label>
+              <label className="row" style={{ gap: 8, fontSize: 13, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={!!o.hipHealth} style={{ marginTop: 2 }}
+                  onChange={(e) => update(o.id, { hipHealth: e.target.checked })} />
+                <span>Also address <b>hip pain</b> — adds hip-rotation mobility, glute-medius activation &amp; a piriformis stretch to the reset and hip-abduction work to gym days.</span>
+              </label>
             </div>
           )}
 

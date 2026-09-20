@@ -57,7 +57,8 @@ function ensurePick(id: string, pool: Exercise[], used: Set<string>, picks: Pick
  * Bias the day toward the profile's objectives: posture adds pulling/rotator
  * work (so you pull more than you press); its anterior-pelvic-tilt add-on also
  * adds a glute strengthener and anti-extension core (never more low-back
- * extension — the erectors are already overactive in that pattern). Load-carriage
+ * extension — the erectors are already overactive in that pattern); its
+ * hip-health add-on adds hip-abduction (glute medius) work. Load-carriage
  * adds a loaded carry plus back-extension endurance. Added as accessories — the
  * time-fit pass keeps them when there's room and trims them first on a tight day
  * (off-gym sessions still cover these objectives).
@@ -72,6 +73,10 @@ function applyObjectiveBias(profile: Profile, pool: Exercise[], used: Set<string
         ensurePick('smith-hip-thrust', pool, used, picks)
       }
       if (!picks.some((p) => p.exercise.pattern === 'core-anti-extension')) ensurePick('plank', pool, used, picks)
+    }
+    if (posture.hipHealth && !picks.some((p) => p.exercise.pattern === 'hip-abduction')) {
+      ensurePick('hip-abduction', pool, used, picks)
+      if (!picks.some((p) => p.exercise.pattern === 'hip-abduction')) ensurePick('band-abduction', pool, used, picks)
     }
   }
   if (findObjective(profile, 'load-carriage')) {

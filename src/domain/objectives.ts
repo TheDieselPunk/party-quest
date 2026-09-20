@@ -63,7 +63,9 @@ const base = (kind: ObjectiveKind): { id: string; kind: ObjectiveKind; enabled: 
 })
 
 export function newPostureObjective(): PostureObjective {
-  return { ...base('posture'), kind: 'posture', dailyReset: true, anteriorPelvicTilt: false }
+  return {
+    ...base('posture'), kind: 'posture', dailyReset: true, anteriorPelvicTilt: false, hipHealth: false,
+  }
 }
 
 export function newRunEventObjective(overrides: Partial<RunEventObjective> = {}): RunEventObjective {

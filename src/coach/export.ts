@@ -98,7 +98,10 @@ export function buildCoachExport(
         const apt = o.anteriorPelvicTilt
           ? ' · **anterior-pelvic-tilt correction on** (reset adds posterior pelvic tilt + dead-bug; gym adds glutes & anti-extension core)'
           : ''
-        lines.push(`- ${meta.icon} **Posture** — daily Desk Reset ${o.dailyReset ? 'on' : 'off'}${apt}; gym sessions biased toward pulling, rotator-cuff and thoracic work.`)
+        const hip = o.hipHealth
+          ? ' · **hip health on** (reset adds 90/90s, clamshells & a figure-4 stretch; gym adds hip-abduction/glute-medius work)'
+          : ''
+        lines.push(`- ${meta.icon} **Posture** — daily Desk Reset ${o.dailyReset ? 'on' : 'off'}${apt}${hip}; gym sessions biased toward pulling, rotator-cuff and thoracic work.`)
       } else if (o.kind === 'run-event') {
         const w = weeksUntil(o.targetDate, now)
         lines.push(`- ${meta.icon} **${o.distanceKm}K run** — ${dateStr(o.targetDate)} (${w} weeks out) · phase **${runPhase(o, now)}** · can jog ~${o.baselineRunMinutes} min non-stop now · ${o.daysPerWeek} run days/wk.`)

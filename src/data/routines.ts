@@ -74,6 +74,32 @@ const STEPS: GuidedStep[] = [
   },
 ]
 
+// Hip-health add-on (pain from lateral/rotational load — dance, cutting sports).
+// The reset already opens the hip flexors and fires the glutes; these add hip
+// internal/external rotation mobility, glute-medius activation (the ab/rotation
+// stabilizer that's often the weak link behind lateral hip pain), and a deep
+// rotator (piriformis) stretch. Inserted right after glute bridges. Text-only
+// for now (no demo clip).
+const HIP_STEPS: GuidedStep[] = [
+  {
+    label: '90/90 hip switches',
+    reps: 8,
+    instruction: 'Sit with front shin perpendicular to your body and back shin mirrored behind, both knees bent 90°. Lift the knees and rotate both legs to switch sides, front leg becoming back. Trains hip internal/external rotation through a full, controlled range.',
+  },
+  {
+    label: 'Clamshells',
+    reps: 15,
+    perSide: true,
+    instruction: 'Lying on your side, knees bent ~45°, feet together. Keeping hips stacked, open the top knee like a clamshell, squeezing the outer glute, then lower with control. Trains glute medius — the hip stabilizer that\'s usually the weak link in lateral hip pain.',
+  },
+  {
+    label: 'Figure-4 stretch',
+    seconds: 30,
+    perSide: true,
+    instruction: 'On your back, cross one ankle over the opposite knee, then pull the uncrossed thigh toward your chest until you feel a stretch deep in the crossed hip. Lengthens the deep hip rotators (piriformis) that guard a sore hip.',
+  },
+]
+
 // Anterior-pelvic-tilt add-on (Janda lower-crossed). The reset already stretches
 // the hip flexors and fires the glutes; these two add the missing half — the
 // posterior-pelvic-tilt motor skill and the deep-core strength to hold it.
@@ -99,27 +125,30 @@ const APT_STEPS: GuidedStep[] = [
   },
 ]
 
-/** Steps for the reset, optionally with the anterior-pelvic-tilt add-on. */
-function resetSteps(anteriorPelvicTilt: boolean): GuidedStep[] {
-  if (!anteriorPelvicTilt) return STEPS
+/** Steps for the reset, optionally with the anterior-pelvic-tilt and/or hip-health add-ons. */
+function resetSteps(anteriorPelvicTilt: boolean, hipHealth: boolean): GuidedStep[] {
   const out: GuidedStep[] = []
   for (const s of STEPS) {
     out.push(s)
-    if (s.art === 'hip-flexor') out.push(...APT_STEPS)
+    if (s.art === 'hip-flexor' && anteriorPelvicTilt) out.push(...APT_STEPS)
+    if (s.art === 'glute-bridge' && hipHealth) out.push(...HIP_STEPS)
   }
   return out
 }
 
 /** The daily posture Desk Reset as a guided session. */
-export function deskResetSession(objectiveId?: string, opts: { anteriorPelvicTilt?: boolean } = {}): PlannedSession {
-  const steps = resetSteps(opts.anteriorPelvicTilt ?? false)
+export function deskResetSession(
+  objectiveId?: string, opts: { anteriorPelvicTilt?: boolean; hipHealth?: boolean } = {},
+): PlannedSession {
+  const steps = resetSteps(opts.anteriorPelvicTilt ?? false, opts.hipHealth ?? false)
   const est = Math.round(
     steps.reduce((s, x) => s + (x.seconds ? x.seconds * (x.perSide ? 2 : 1) : (x.reps ?? 8) * 3) + 12, 0) / 60,
   )
+  const extras = [opts.anteriorPelvicTilt && 'pelvic-tilt', opts.hipHealth && 'hip'].filter(Boolean)
   return {
     kind: 'mobility',
     title: 'Desk Reset',
-    detail: opts.anteriorPelvicTilt ? 'Posture + pelvic-tilt flow' : 'Posture mobility flow',
+    detail: extras.length ? `Posture + ${extras.join(' + ')} flow` : 'Posture mobility flow',
     estMinutes: Math.max(5, est),
     objectiveId,
     attribute: 'vitality',

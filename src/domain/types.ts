@@ -339,6 +339,13 @@ export interface PostureObjective extends ObjectiveCommon {
    * and anti-extension core work on top of the upper-body posture bias.
    */
   anteriorPelvicTilt?: boolean
+  /**
+   * Also target hip pain/mobility (e.g. from lateral/rotational movement —
+   * dancing, cutting sports): adds a 90/90 hip-rotation drill, clamshells, and
+   * a figure-4 glute/piriformis stretch to the daily reset, and biases gym
+   * days toward hip-abduction (glute medius) work.
+   */
+  hipHealth?: boolean
 }
 
 export interface RunEventObjective extends ObjectiveCommon {

@@ -179,6 +179,35 @@ describe('anterior pelvic tilt correction', () => {
   })
 })
 
+describe('hip health correction', () => {
+  const hipPosture = (): PostureObjective => ({
+    id: 'p', kind: 'posture', enabled: true, createdAt: NOW, dailyReset: true, hipHealth: true,
+  })
+
+  it('adds 90/90s, clamshells and a figure-4 stretch to the Desk Reset, after glute bridges', () => {
+    const labels = (s: ReturnType<typeof deskResetSession>) => (s.steps ?? []).map((x) => x.label)
+    const base = labels(deskResetSession('p'))
+    const hip = labels(deskResetSession('p', { hipHealth: true }))
+
+    expect(base).not.toContain('Clamshells')
+    expect(hip).toContain('90/90 hip switches')
+    expect(hip).toContain('Clamshells')
+    expect(hip).toContain('Figure-4 stretch')
+    // the whole block is inserted right after glute bridges
+    const glute = hip.findIndex((l) => /glute bridge/i.test(l))
+    expect(hip.slice(glute + 1, glute + 4)).toEqual(['90/90 hip switches', 'Clamshells', 'Figure-4 stretch'])
+    expect(deskResetSession('p', { hipHealth: true }).estMinutes)
+      .toBeGreaterThanOrEqual(deskResetSession('p').estMinutes)
+  })
+
+  it('biases gym days toward hip-abduction (glute medius) work', () => {
+    const profile = makeDefaultProfile({ location: 'gym', sessionMinutes: 90, objectives: [hipPosture()] })
+    const plan = generateWorkout(profile, { dayIndex: 0 })
+    const hasHipAbduction = plan.exercises.some((pe) => EXERCISES_BY_ID[pe.exerciseId]?.pattern === 'hip-abduction')
+    expect(hasHipAbduction).toBe(true)
+  })
+})
+
 describe('off-gym session XP', () => {
   const base = { id: 's', profileId: 'p', date: NOW, goal: 'muscle' as const, exercises: [] }
 

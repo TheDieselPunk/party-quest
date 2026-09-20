@@ -104,7 +104,9 @@ export function planWeek(profile: Profile, now = Date.now(), history: CompletedS
     }
 
     if (postureObj?.dailyReset) {
-      sessions.push(deskResetSession(postureObj.id, { anteriorPelvicTilt: postureObj.anteriorPelvicTilt }))
+      sessions.push(deskResetSession(postureObj.id, {
+        anteriorPelvicTilt: postureObj.anteriorPelvicTilt, hipHealth: postureObj.hipHealth,
+      }))
     }
 
     if (sessions.length === 0) {
