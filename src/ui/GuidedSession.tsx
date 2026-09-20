@@ -48,6 +48,7 @@ export function GuidedSession({ profile }: { profile: Profile }) {
   const [i, setI] = useState(0)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [paused, setPaused] = useState(false)
+  const [started, setStarted] = useState(false)
   const [done, setDone] = useState<SessionRewards | null>(null)
   const [finishing, setFinishing] = useState(false)
   const endRef = useRef(0)
@@ -65,21 +66,25 @@ export function GuidedSession({ profile }: { profile: Profile }) {
   const step: GuidedStep | undefined = steps[i]
   const isLast = i >= steps.length - 1
 
-  // (Re)initialise the timer whenever the step changes.
+  // (Re)initialise the timer whenever the step changes. Timed steps start
+  // paused-at-full-duration — the countdown only begins once the user taps
+  // Start, so they have time to get into position first.
   useEffect(() => {
     if (!step) return
-    if (step.seconds != null) {
-      endRef.current = Date.now() + step.seconds * 1000
-      setRemaining(step.seconds)
-    } else {
-      setRemaining(null)
-    }
+    setRemaining(step.seconds ?? null)
     setPaused(false)
+    setStarted(false)
   }, [i, step])
+
+  function startTimer() {
+    if (!step || step.seconds == null) return
+    endRef.current = Date.now() + step.seconds * 1000
+    setStarted(true)
+  }
 
   // Countdown for timed steps; auto-advances (or stops on the last step).
   useEffect(() => {
-    if (!step || step.seconds == null || paused || done) return
+    if (!step || step.seconds == null || paused || done || !started) return
     const id = setInterval(() => {
       const left = Math.round((endRef.current - Date.now()) / 1000)
       setRemaining(left)
@@ -91,7 +96,7 @@ export function GuidedSession({ profile }: { profile: Profile }) {
       }
     }, 250)
     return () => clearInterval(id)
-  }, [i, step, paused, done, isLast, steps.length])
+  }, [i, step, paused, done, started, isLast, steps.length])
 
   function togglePause() {
     if (paused) { endRef.current = Date.now() + (remaining ?? 0) * 1000; setPaused(false) } else setPaused(true)
@@ -184,15 +189,26 @@ export function GuidedSession({ profile }: { profile: Profile }) {
 
       <div className="row" style={{ gap: 8, marginTop: 16 }}>
         <button className="btn btn-ghost" disabled={i === 0} onClick={() => setI((c) => Math.max(0, c - 1))}>← Back</button>
-        {timed && <button className="btn btn-ghost" style={{ flex: 1 }} onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>}
-        {!isLast ? (
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setI((c) => Math.min(steps.length - 1, c + 1))}>
-            {timed ? 'Skip →' : 'Done →'}
-          </button>
+        {timed && !started ? (
+          <>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={startTimer}>Start ▶</button>
+            {!isLast && (
+              <button className="btn btn-ghost" onClick={() => setI((c) => Math.min(steps.length - 1, c + 1))}>Skip →</button>
+            )}
+          </>
         ) : (
-          <button className="btn btn-primary" style={{ flex: 1 }} disabled={finishing} onClick={finish}>
-            {finishing ? 'Saving…' : 'Finish ✓'}
-          </button>
+          <>
+            {timed && <button className="btn btn-ghost" style={{ flex: 1 }} onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>}
+            {!isLast ? (
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setI((c) => Math.min(steps.length - 1, c + 1))}>
+                {timed ? 'Skip →' : 'Done →'}
+              </button>
+            ) : (
+              <button className="btn btn-primary" style={{ flex: 1 }} disabled={finishing} onClick={finish}>
+                {finishing ? 'Saving…' : 'Finish ✓'}
+              </button>
+            )}
+          </>
         )}
       </div>
 
