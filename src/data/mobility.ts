@@ -16,6 +16,13 @@ const MOBILITY_VIDEO: Record<string, string> = {
   // = the illustrated FitnessProgrammer style, accurate but not the 3D set).
   'posterior-pelvic-tilt': 'mobility/posterior-pelvic-tilt.mp4',
   'dead-bug': 'mobility/dead-bug.mp4',
+  'ribs-down-breathing': 'mobility/ribs-down-breathing.mp4',
+  'pushup-plus': 'mobility/pushup-plus.mp4',
+  'prone-y-raise': 'mobility/prone-y-raise.mp4',
+  // Hip-health add-on.
+  '90-90': 'mobility/90-90.mp4',
+  'clamshell': 'mobility/clamshell.mp4',
+  'figure-4': 'mobility/figure-4.mp4',
 }
 
 export function mobilityVideo(art?: string): string | undefined {

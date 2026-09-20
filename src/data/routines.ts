@@ -34,11 +34,13 @@ const STEPS: GuidedStep[] = [
   {
     label: 'Push-up plus (serratus)',
     reps: 10,
+    art: 'pushup-plus',
     instruction: 'From a push-up position (on your knees is fine), keep the elbows straight and push the floor away so the shoulder blades spread apart, then let them settle back together. Only those last few inches — that\'s the serratus, which upward-rotates the shoulder blade so your shoulders can actually sit back.',
   },
   {
     label: 'Prone Y-raise (lower trap)',
     reps: 10,
+    art: 'prone-y-raise',
     instruction: 'Face-down on the floor, arms overhead in a wide "Y", thumbs pointing up. Lift the arms a few inches WITHOUT shrugging — think of sliding the shoulder blades down your back. No weight needed; the lower trap is small and control is the point.',
   },
   {
@@ -78,24 +80,26 @@ const STEPS: GuidedStep[] = [
 // The reset already opens the hip flexors and fires the glutes; these add hip
 // internal/external rotation mobility, glute-medius activation (the ab/rotation
 // stabilizer that's often the weak link behind lateral hip pain), and a deep
-// rotator (piriformis) stretch. Inserted right after glute bridges. Text-only
-// for now (no demo clip).
+// rotator (piriformis) stretch. Inserted right after glute bridges.
 const HIP_STEPS: GuidedStep[] = [
   {
     label: '90/90 hip switches',
     reps: 8,
+    art: '90-90',
     instruction: 'Sit with front shin perpendicular to your body and back shin mirrored behind, both knees bent 90°. Lift the knees and rotate both legs to switch sides, front leg becoming back. Trains hip internal/external rotation through a full, controlled range.',
   },
   {
     label: 'Clamshells',
     reps: 15,
     perSide: true,
+    art: 'clamshell',
     instruction: 'Lying on your side, knees bent ~45°, feet together. Keeping hips stacked, open the top knee like a clamshell, squeezing the outer glute, then lower with control. Trains glute medius — the hip stabilizer that\'s usually the weak link in lateral hip pain.',
   },
   {
     label: 'Figure-4 stretch',
     seconds: 30,
     perSide: true,
+    art: 'figure-4',
     instruction: 'On your back, cross one ankle over the opposite knee, then pull the uncrossed thigh toward your chest until you feel a stretch deep in the crossed hip. Lengthens the deep hip rotators (piriformis) that guard a sore hip.',
   },
 ]
@@ -103,11 +107,12 @@ const HIP_STEPS: GuidedStep[] = [
 // Anterior-pelvic-tilt add-on (Janda lower-crossed). The reset already stretches
 // the hip flexors and fires the glutes; these two add the missing half — the
 // posterior-pelvic-tilt motor skill and the deep-core strength to hold it.
-// Inserted right after the hip-flexor stretch. Text-only for now (no demo clip).
+// Inserted right after the hip-flexor stretch.
 const APT_STEPS: GuidedStep[] = [
   {
     label: 'Ribs-down breathing',
     seconds: 60,
+    art: 'ribs-down-breathing',
     instruction: 'On your back, knees bent. Exhale slowly and fully through pursed lips and feel your front ribs settle DOWN toward your pelvis — then keep them there as you breathe quietly in through your nose, into your lower ribs and back. This sets the ribs-over-pelvis stack that the tilt and dead-bug work below depend on.',
   },
   {
