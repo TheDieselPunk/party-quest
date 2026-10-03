@@ -12,8 +12,9 @@ describe('snapLoad', () => {
     expect(snapLoad('dumbbell', 33)).toBe(35)
     expect(snapLoad('dumbbell', 999)).toBe(50) // clamped to heaviest pair
   })
-  it('rounds stack machines to their increment and clamps to range', () => {
-    expect(snapLoad('hoist-hd3300', 94)).toBe(90) // 10 lb steps (no 5 lb add-on)
+  it('snaps to the HD-3300’s actual stepped stack, not a flat increment', () => {
+    // Real stack: 10,25,40,55,70,85,100,115,135,155,175,195,215 (+15 then +20 steps).
+    expect(snapLoad('hoist-hd3300', 94)).toBe(100)
     expect(snapLoad('hoist-hd3300', 3)).toBe(10) // min
   })
 })
@@ -23,12 +24,12 @@ describe('recommendLoad (double progression)', () => {
   it('estimates and flags calibration the first time', () => {
     const rec = recommendLoad(ex, 'intermediate', [8, 12], 2, undefined)
     expect(rec.calibration).toBe(true)
-    expect(rec.load).toBe(90)
+    expect(rec.load).toBe(85) // baseLoad 90 snaps down to the nearest stack step
   })
   it('adds a step after hitting the top of the range on all sets', () => {
     const last: LastPerf = { load: 90, repsPerSet: [12, 12, 12], rir: 2 }
     const rec = recommendLoad(ex, 'intermediate', [8, 12], 2, last)
-    expect(rec.load).toBe(100) // HD-3300 steps 10 lb (no 5 lb add-on)
+    expect(rec.load).toBe(115) // next stack step up from 90 (100, then +1 step)
     expect(rec.calibration).toBe(false)
   })
   it('holds the load when reps are mid-range', () => {
@@ -37,7 +38,7 @@ describe('recommendLoad (double progression)', () => {
   })
   it('backs off after missing the bottom of the range', () => {
     const last: LastPerf = { load: 90, repsPerSet: [6, 5, 5], rir: 0 }
-    expect(recommendLoad(ex, 'intermediate', [8, 12], 2, last).load).toBe(80)
+    expect(recommendLoad(ex, 'intermediate', [8, 12], 2, last).load).toBe(85) // next stack step down from 90
   })
   it('returns null for bodyweight moves', () => {
     expect(recommendLoad(EXERCISES_BY_ID['plank'], 'intermediate', [10, 20], 2, undefined).load).toBeNull()
@@ -97,10 +98,32 @@ describe('generateWorkout', () => {
   it('fits roughly within the requested time budget', () => {
     for (const minutes of [40, 60, 80]) {
       const plan = generateWorkout(makeDefaultProfile({ sessionMinutes: minutes }), { busy: true })
-      const mins = estimateSessionSeconds(plan.exercises) / 60
+      const mins = estimateSessionSeconds(plan.exercises, { warmupBlock: true }) / 60
       expect(mins).toBeGreaterThan(minutes * 0.7)
       expect(mins).toBeLessThan(minutes * 1.25)
+      expect(plan.estMinutes).toBe(Math.round(mins))
     }
+  })
+
+  it('a 60-min plan holds ~14–18 working sets (calibrated to real logged sessions)', () => {
+    // David's real full-body sessions: ~19 working sets took ~75 min of lifting.
+    for (const goal of ['strength', 'muscle'] as const) {
+      for (let dayIndex = 0; dayIndex < 3; dayIndex++) {
+        const plan = generateWorkout(makeDefaultProfile({ goal, sessionMinutes: 60 }), { busy: true, dayIndex })
+        const working = plan.exercises.reduce((n, pe) => n + pe.sets.filter((s) => !s.warmup).length, 0)
+        expect(working).toBeGreaterThanOrEqual(12)
+        expect(working).toBeLessThanOrEqual(18)
+      }
+    }
+  })
+
+  it('counts unilateral moves twice and station changeovers', () => {
+    const plan = generateWorkout(makeDefaultProfile({ sessionMinutes: 60 }), { busy: true })
+    const one = plan.exercises.find((pe) => !pe.supersetGroup)!
+    const base = estimateSessionSeconds([one])
+    const asLunge = estimateSessionSeconds([{ ...one, exerciseId: 'db-lunge' }])
+    expect(asLunge).toBeGreaterThan(base)
+    expect(estimateSessionSeconds([one, { ...one }])).toBe(base * 2) // each station costs a changeover
   })
 
   it('gives every non-cardio exercise recommended weights or a bodyweight note', () => {

@@ -96,6 +96,8 @@ export interface EquipmentMode {
   name: string
   /** Setup guidance shown in the workout player: "what mode to use". */
   setup: string
+  /** Hand/grip orientation on the handles for this mode, when it matters. */
+  grip?: 'vertical' | 'horizontal'
 }
 
 export interface Equipment {
@@ -109,8 +111,10 @@ export interface Equipment {
   increment?: number
   minLoad?: number
   maxLoad?: number
-  /** Discrete available loads (dumbbells / kettlebells), lb. */
+  /** Discrete available loads (dumbbells / kettlebells / stepped stacks), lb. */
   fixedLoads?: number[]
+  /** Empty-bar weight (lb) for bar-loaded equipment (barbell, EZ bar, Smith). */
+  barWeight?: number
   modes?: EquipmentMode[]
   notes?: string
 }
@@ -135,6 +139,20 @@ export interface Exercise {
   repClass: RepClass
   /** How the prescribed load is interpreted for logging/estimation. */
   loadBasis: 'per-hand' | 'total' | 'bodyweight'
+  /**
+   * Per-hand lift done with a SINGLE dumbbell (one-arm row, suitcase carry), so
+   * the logged weight is credited once, not doubled for a second hand.
+   */
+  oneHanded?: boolean
+  /**
+   * Unilateral: one side works at a time (lunges, one-arm rows). Reps are
+   * prescribed and logged PER SIDE — "10 reps" means 10 on each leg/arm.
+   */
+  perSide?: boolean
+  /** Held/walked for time (plank, carries): "reps" are logged as seconds. */
+  timed?: boolean
+  /** Cable attachment to clip on (rope, D-handle, straight bar…). Required for cable-machine moves. */
+  attachment?: string
   /** Ordered fallback exercises (usually different equipment). */
   altIds?: string[]
   cues?: string
@@ -163,6 +181,8 @@ export interface PrescribedExercise {
   modeId?: string
   modeName?: string
   modeSetup?: string
+  /** Hand/grip orientation for this mode, when the equipment specifies one. */
+  modeGrip?: 'vertical' | 'horizontal'
   kind: ExerciseKind
   targetMuscle: Muscle
   muscles: MuscleInvolvement[]
@@ -200,6 +220,8 @@ export interface Profile {
   createdAt: number
 
   goal: Goal
+  /** All selected goals; goal === goals[0] is the primary that drives rep ranges/volume. */
+  goals: Goal[]
   goalOther?: string
   experience: Experience
   frequency: number
@@ -375,7 +397,7 @@ export interface LoadCarriageObjective extends ObjectiveCommon {
 export type Objective = PostureObjective | RunEventObjective | LoadCarriageObjective
 
 // --- Off-gym sessions & weekly planning -------------------------------------
-export type SessionType = 'gym' | 'mobility' | 'run' | 'ruck'
+export type SessionType = 'gym' | 'mobility' | 'run' | 'ruck' | 'cardio'
 export type PlannedKind = SessionType | 'rest'
 
 /** One step of a guided off-gym session (a mobility move, or a run interval). */

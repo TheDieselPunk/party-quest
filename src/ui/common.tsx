@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Goal, PrescribedExercise } from '../domain/types'
-import { EXERCISES_BY_ID } from '../data/exercises'
+import { loadEntryFor, repUnit } from '../data/loadEntry'
 
 export const GOAL_LABEL: Record<Goal, string> = {
   strength: 'Gain Strength',
@@ -15,17 +15,24 @@ export function fmtSeconds(total: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-/** How to describe a prescribed load in the UI. */
+/** How to describe a prescribed load in the UI (per hand / per side / total). */
 export function loadLabel(pe: PrescribedExercise, load: number | null): string {
   if (pe.kind === 'conditioning') return 'effort'
-  const basis = EXERCISES_BY_ID[pe.exerciseId]?.loadBasis
-  if (load == null || basis === 'bodyweight') return 'Bodyweight'
-  return basis === 'per-hand' ? `${load} lb/hand` : `${load} lb`
+  const entry = loadEntryFor(pe.exerciseId)
+  if (load == null || !Number.isFinite(load) || entry.mode === 'bodyweight') return 'Bodyweight'
+  return entry.format(load)
+}
+
+/** A logged set's load for history/summaries — "BW" for bodyweight moves. */
+export function fmtLoad(exerciseId: string, load: number | null): string {
+  if (load == null || !Number.isFinite(load)) return 'BW'
+  return loadEntryFor(exerciseId).format(load)
 }
 
 export function repLabel(pe: PrescribedExercise, reps: [number, number]): string {
   if (pe.kind === 'conditioning') return 'rounds'
-  return reps[0] === reps[1] ? `${reps[0]} reps` : `${reps[0]}–${reps[1]} reps`
+  const unit = repUnit(pe.exerciseId)
+  return reps[0] === reps[1] ? `${reps[0]} ${unit}` : `${reps[0]}–${reps[1]} ${unit}`
 }
 
 export function Bar({ value, max, variant }: { value: number; max: number; variant?: 'vol' | 'over' }) {

@@ -77,7 +77,7 @@ export function ImportHistory({ profile }: { profile: Profile }) {
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
             Your character is now <b>Level {done.level}</b>, and your next workout will use this history for weight recommendations.
           </div>
-          {done.suggestsStrength && profile.goal !== 'strength' && (
+          {done.suggestsStrength && !profile.goals.includes('strength') && (
             <div style={{ fontSize: 12, marginTop: 8, background: '#00000030', borderRadius: 8, padding: '8px 10px', borderLeft: '3px solid var(--gold)' }}>
               💡 Your logged workouts lean on <b>low-rep (≈6) compound work</b> — set your <b>Goal</b> to
               <b> Gain Strength</b> above to match that style (heavier loads, lower reps, longer rest).

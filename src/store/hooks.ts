@@ -1,16 +1,21 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { useSession } from './session'
+import { normalizeProfile } from '../domain/defaults'
 import type { Character, CompletedSession, Profile } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
 
 export function useProfiles(): Profile[] | undefined {
-  return useLiveQuery(() => db.profiles.orderBy('createdAt').toArray(), [])
+  return useLiveQuery(async () => (await db.profiles.orderBy('createdAt').toArray()).map(normalizeProfile), [])
 }
 
 export function useCurrentProfile(): Profile | undefined | null {
   const id = useSession((s) => s.currentProfileId)
-  return useLiveQuery(async () => (id ? (await db.profiles.get(id)) ?? null : null), [id])
+  return useLiveQuery(async () => {
+    if (!id) return null
+    const p = await db.profiles.get(id)
+    return p ? normalizeProfile(p) : null
+  }, [id])
 }
 
 export function useCharacter(profileId: string | null | undefined): Character | undefined {

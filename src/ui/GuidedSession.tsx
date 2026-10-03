@@ -51,6 +51,7 @@ export function GuidedSession({ profile }: { profile: Profile }) {
   const [started, setStarted] = useState(false)
   const [done, setDone] = useState<SessionRewards | null>(null)
   const [finishing, setFinishing] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
   const endRef = useRef(0)
 
   useEffect(() => {
@@ -212,9 +213,25 @@ export function GuidedSession({ profile }: { profile: Profile }) {
         )}
       </div>
 
-      <button className="btn btn-ghost btn-block" style={{ marginTop: 10, color: 'var(--text-dim)' }} disabled={finishing} onClick={finish}>
-        End &amp; log now
-      </button>
+      {/* Ending early logs the session as done — confirm so a stray tap can't. */}
+      {confirmEnd ? (
+        <div className="card fade-in" style={{ marginTop: 10, padding: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>End the session and log it now?</div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+            You’re on step {i + 1} of {steps.length}. It’ll be logged as a completed {pending.title}.
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} disabled={finishing} onClick={() => setConfirmEnd(false)}>Keep going</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} disabled={finishing} onClick={finish}>
+              {finishing ? 'Saving…' : 'Yes, end & log'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 10, color: 'var(--text-dim)' }} disabled={finishing} onClick={() => setConfirmEnd(true)}>
+          End &amp; log now
+        </button>
+      )}
     </div>
   )
 }

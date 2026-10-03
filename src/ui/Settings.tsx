@@ -11,7 +11,7 @@ import { useAuth, signOut } from '../cloud/auth'
 import { useSyncStatus } from '../cloud/sync'
 import { ImportHistory } from './ImportHistory'
 import { Objectives } from './Objectives'
-import { Chips, Field, Screen } from './common'
+import { Chips, Field, Screen, GOAL_LABEL } from './common'
 
 export function Settings({ profile }: { profile: Profile }) {
   const navigate = useNavigate()
@@ -29,6 +29,13 @@ export function Settings({ profile }: { profile: Profile }) {
   }
   function toggleAvoid(m: Muscle) {
     set('avoidMuscles', p.avoidMuscles.includes(m) ? p.avoidMuscles.filter((x) => x !== m) : [...p.avoidMuscles, m])
+  }
+  function toggleGoal(g: Goal) {
+    const next = p.goals.includes(g)
+      ? (p.goals.length > 1 ? p.goals.filter((x) => x !== g) : p.goals)
+      : [...p.goals, g]
+    setP((prev) => ({ ...prev, goals: next, goal: next[0] }))
+    setSaved(false)
   }
 
   async function save() {
@@ -72,13 +79,22 @@ export function Settings({ profile }: { profile: Profile }) {
         <Field label="Character name">
           <input value={p.characterName} onChange={(e) => { set('characterName', e.target.value); set('name', e.target.value) }} />
         </Field>
-        <Field label="Goal">
-          <Chips<Goal> value={p.goal} onChange={(v) => set('goal', v)} options={[
-            { value: 'strength', label: 'Strength' }, { value: 'muscle', label: 'Muscle' },
-            { value: 'fatloss', label: 'Fat Loss' }, { value: 'other', label: 'Other' },
-          ]} />
+        <Field label="Goal (pick one or more)">
+          <div className="chips">
+            {([
+              { value: 'strength', label: 'Strength' }, { value: 'muscle', label: 'Muscle' },
+              { value: 'fatloss', label: 'Fat Loss' }, { value: 'other', label: 'Other' },
+            ] as { value: Goal; label: string }[]).map((g) => (
+              <button key={g.value} className="chip" aria-pressed={p.goals.includes(g.value)} onClick={() => toggleGoal(g.value)}>{g.label}</button>
+            ))}
+          </div>
+          {p.goals.length > 1 && (
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+              <b>{GOAL_LABEL[p.goals[0]]}</b> drives your rep ranges; the rest add light touches (e.g. Fat Loss adds a cardio finisher).
+            </div>
+          )}
         </Field>
-        {p.goal === 'other' && (
+        {p.goals.includes('other') && (
           <Field label="Describe your goal">
             <input value={p.goalOther ?? ''} onChange={(e) => set('goalOther', e.target.value)} />
           </Field>

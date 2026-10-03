@@ -1,20 +1,66 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Profile, PrescribedExercise } from '../domain/types'
+import type { Profile, PrescribedExercise, LoggedSet } from '../domain/types'
 import type { ActiveWorkout } from '../domain/active'
 import { elapsedMs } from '../domain/active'
 import { db } from '../db/db'
 import { saveActive, swapExercise, finishWorkout, discardActive } from '../db/repo'
 import { EXERCISES_BY_ID } from '../data/exercises'
+import { loadEntryFor, repMeaning } from '../data/loadEntry'
 import { machinePhoto } from '../data/machinePhotos'
 import { gifFor } from '../data/gifs'
+import { WARMUP_SET_REST_SECONDS } from '../engine/params'
 import type { SessionRewards } from '../rpg/character'
 import { RestTimer } from './RestTimer'
 import { RewardsModal } from './Rewards'
 import { useWakeLock } from './useWakeLock'
-import { loadLabel, repLabel, fmtSeconds } from './common'
+import { loadLabel, repLabel, fmtSeconds, fmtLoad } from './common'
 
 interface Block { group: number | null; indices: number[] }
+
+/**
+ * Keep only what a number can contain, so a stray keystroke (a comma or dash
+ * from the phone's number pad) can never turn into NaN.
+ */
+function sanitizeNumeric(raw: string, decimals: boolean): string {
+  if (!decimals) return raw.replace(/[^0-9]/g, '')
+  const cleaned = raw.replace(',', '.').replace(/[^0-9.]/g, '')
+  const dot = cleaned.indexOf('.')
+  return dot < 0 ? cleaned : cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, '')
+}
+
+function parseNumOrNull(text: string): number | null {
+  if (text === '' || text === '.') return null
+  const n = Number(text)
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * A set-table number cell. While focused it edits a local string (so "37." or
+ * an empty field survive mid-typing); every keystroke commits a sanitized
+ * number (or null) upward, and on blur it re-syncs to the stored value.
+ */
+function NumberCell({ value, onCommit, placeholder, decimals = false, label }: {
+  value: number | null
+  onCommit: (v: number | null) => void
+  placeholder?: string
+  decimals?: boolean
+  label: string
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const shown = draft ?? (value != null && Number.isFinite(value) ? String(value) : '')
+  return (
+    <input className="pill-input" inputMode={decimals ? 'decimal' : 'numeric'} aria-label={label}
+      value={shown} placeholder={placeholder}
+      onFocus={() => setDraft(shown)}
+      onBlur={() => setDraft(null)}
+      onChange={(e) => {
+        const text = sanitizeNumeric(e.target.value, decimals)
+        setDraft(text)
+        onCommit(parseNumOrNull(text))
+      }} />
+  )
+}
 
 function buildBlocks(exercises: PrescribedExercise[]): Block[] {
   const blocks: Block[] = []
@@ -27,6 +73,28 @@ function buildBlocks(exercises: PrescribedExercise[]): Block[] {
   return blocks
 }
 
+const doneWorking = (logs: LoggedSet[]) => logs.filter((s) => s.done && !s.warmup).length
+
+/** Every working set of every exercise in the block is checked off. */
+function blockComplete(block: Block, logs: LoggedSet[][]): boolean {
+  return block.indices.every((i) => {
+    const working = logs[i].filter((s) => !s.warmup)
+    return working.length > 0 && working.every((s) => s.done)
+  })
+}
+
+/** One-line recap for a finished exercise's collapsed bar, e.g. "3 × 10 · 85 lb". */
+function recap(pe: PrescribedExercise, logs: LoggedSet[]): string {
+  const done = logs.filter((s) => s.done && !s.warmup)
+  if (!done.length) return 'done'
+  if (pe.kind === 'conditioning') return `${done.length} rounds`
+  const reps = done.map((s) => s.reps)
+  const repsStr = reps.every((r) => r === reps[0]) ? `${done.length} × ${reps[0]}` : `${done.length} sets · ${reps.join('/')}`
+  const loads = [...new Set(done.map((s) => s.load))]
+  const loadStr = loads.length === 1 ? fmtLoad(pe.exerciseId, loads[0]) : `up to ${fmtLoad(pe.exerciseId, Math.max(...loads.map((l) => l ?? 0)))}`
+  return `${repsStr} · ${loadStr}`
+}
+
 export function WorkoutPlayer({ profile }: { profile: Profile }) {
   const navigate = useNavigate()
   const [active, setActive] = useState<ActiveWorkout | null | undefined>(undefined)
@@ -34,6 +102,8 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
   const [rewards, setRewards] = useState<SessionRewards | null>(null)
   const [zoom, setZoom] = useState<{ src: string; name: string } | null>(null)
   const [elapsed, setElapsed] = useState(0)
+  /** Finished blocks the trainee re-opened (finished blocks collapse by default). */
+  const [reopened, setReopened] = useState<Set<number>>(new Set())
 
   useEffect(() => { db.active.get(profile.id).then((a) => setActive(a ?? null)) }, [profile.id])
   useEffect(() => {
@@ -62,7 +132,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
 
   const plan = active.plan
   const totalSets = active.logs.reduce((n, l) => n + l.filter((s) => !s.warmup).length, 0)
-  const doneSets = active.logs.reduce((n, l) => n + l.filter((s) => s.done && !s.warmup).length, 0)
+  const doneSets = active.logs.reduce((n, l) => n + doneWorking(l), 0)
 
   function persist(next: ActiveWorkout) { setActive(next); void saveActive(next) }
 
@@ -81,29 +151,61 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
     else persist({ ...active, pausedAt: Date.now() })
   }
 
-  function updateSet(exIdx: number, setIdx: number, patch: Partial<ActiveWorkout['logs'][0][0]>) {
+  function withSet(logs: LoggedSet[][], exIdx: number, setIdx: number, patch: Partial<LoggedSet>): LoggedSet[][] {
+    return logs.map((l, i) => (i === exIdx ? l.map((s, j) => (j === setIdx ? { ...s, ...patch } : s)) : l))
+  }
+
+  function updateSet(exIdx: number, setIdx: number, patch: Partial<LoggedSet>) {
     if (!active) return
-    const logs = active.logs.map((l, i) => (i === exIdx ? l.map((s, j) => (j === setIdx ? { ...s, ...patch } : s)) : l))
     // Logging a set means you're training again — auto-resume if paused.
-    persist({ ...active, logs, ...resumeFields(active) })
+    persist({ ...active, logs: withSet(active.logs, exIdx, setIdx, patch), ...resumeFields(active) })
+  }
+
+  /** Why a set can't be checked off yet (null = it can). Junk sets never reach history. */
+  function blockReason(pe: PrescribedExercise, s: LoggedSet): string | null {
+    const showLoad = loadEntryFor(pe.exerciseId).mode !== 'bodyweight' && pe.kind !== 'conditioning'
+    if (showLoad && (s.load == null || !Number.isFinite(s.load) || s.load <= 0)) return 'Enter a weight before checking off this set'
+    if (!Number.isFinite(s.reps) || s.reps <= 0) return 'Enter your reps before checking off this set'
+    return null
+  }
+
+  /** The rest that follows a just-completed set, given the logs after it was checked. */
+  function restAfter(exIdx: number, setIdx: number, logs: LoggedSet[][]): { seconds: number; label: string } {
+    const pe = plan.exercises[exIdx]
+    if (logs[exIdx][setIdx].warmup) return { seconds: WARMUP_SET_REST_SECONDS, label: `Ramp-up set done — next set of ${pe.name}` }
+
+    const partners = pe.supersetGroup != null
+      ? plan.exercises.map((x, i) => ({ x, i })).filter(({ x, i }) => i !== exIdx && x.supersetGroup === pe.supersetGroup)
+      : []
+    if (partners.length && pe.transitionSeconds != null) {
+      // Mid-round: a partner hasn't done this round yet → quick transition to it.
+      const mine = doneWorking(logs[exIdx])
+      const behind = partners.find(({ i }) => doneWorking(logs[i]) < mine && doneWorking(logs[i]) < logs[i].filter((s) => !s.warmup).length)
+      if (behind) return { seconds: pe.transitionSeconds, label: `Superset → ${behind.x.name}` }
+      // Round complete → full rest before the next round.
+      const rest = Math.max(pe.restSeconds, ...partners.map(({ x }) => x.restSeconds))
+      return { seconds: rest, label: 'Superset round done — rest, then go again' }
+    }
+
+    const remaining = logs[exIdx].filter((s) => !s.done && !s.warmup).length
+    if (remaining > 0) return { seconds: pe.restSeconds, label: `Before your next set of ${pe.name}` }
+    const next = plan.exercises.slice(exIdx + 1).find((_, k) => logs[exIdx + 1 + k].some((s) => !s.done))
+    return { seconds: pe.restSeconds, label: next ? `Next up: ${next.name}` : 'Last set done — finish strong!' }
   }
 
   function markDone(exIdx: number, setIdx: number) {
     if (!active) return
+    const pe = plan.exercises[exIdx]
     const set = active.logs[exIdx][setIdx]
     const nowDone = !set.done
-    updateSet(exIdx, setIdx, { done: nowDone })
-    if (nowDone && profile.restAutostart && !set.warmup) {
-      const pe = plan.exercises[exIdx]
-      const inSuper = pe.supersetGroup != null && pe.transitionSeconds != null
-      const partner = inSuper
-        ? plan.exercises.find((x, i) => i !== exIdx && x.supersetGroup === pe.supersetGroup)
-        : undefined
-      setTimer({
-        key: Date.now(),
-        seconds: inSuper ? pe.transitionSeconds! : pe.restSeconds,
-        label: inSuper && partner ? `Superset → ${partner.name}` : `Before your next set`,
-      })
+    if (nowDone && blockReason(pe, set)) return
+    const logs = withSet(active.logs, exIdx, setIdx, { done: nowDone })
+    persist({ ...active, logs, ...resumeFields(active) })
+    // Every completed set (warm-ups included) pops the rest timer — nothing
+    // else (like a blank RIR) gates it.
+    if (nowDone && profile.restAutostart) {
+      const r = restAfter(exIdx, setIdx, logs)
+      setTimer({ key: Date.now(), ...r })
     }
   }
 
@@ -127,10 +229,19 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
     navigate('/')
   }
 
+  function toggleReopen(bi: number) {
+    setReopened((prev) => {
+      const next = new Set(prev)
+      if (next.has(bi)) next.delete(bi)
+      else next.add(bi)
+      return next
+    })
+  }
+
   const gridCols = '26px 1fr 1fr 46px 44px'
 
   return (
-    <div className="screen fade-in" style={{ paddingBottom: timer ? 150 : undefined }}>
+    <div className="screen fade-in" style={{ paddingBottom: timer ? 190 : undefined }}>
       {/* Header */}
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
         <button className="btn btn-sm btn-ghost" onClick={abandon}>✕</button>
@@ -166,22 +277,56 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
         </details>
       )}
 
-      {blocks.map((block, bi) => (
+      {blocks.map((block, bi) => {
+        const isSuper = block.group != null && block.indices.length > 1
+        const complete = blockComplete(block, active.logs)
+
+        // Finished: collapse to a slim bar with a green check (tap to re-open).
+        if (complete && !reopened.has(bi)) {
+          return (
+            <button key={bi} className="card done-bar fade-in" onClick={() => toggleReopen(bi)}
+              aria-label={`${block.indices.map((i) => plan.exercises[i].name).join(' and ')} complete — tap to show sets`}>
+              <span className="done-check">✓</span>
+              <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                <span style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {isSuper ? '⚡ ' : ''}{block.indices.map((i) => plan.exercises[i].name).join(' + ')}
+                </span>
+                <span className="muted" style={{ display: 'block', fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {block.indices.map((i) => recap(plan.exercises[i], active.logs[i])).join('  ·  ')}
+                </span>
+              </span>
+              <span className="muted" style={{ fontSize: 12 }}>▼</span>
+            </button>
+          )
+        }
+
+        return (
         <div key={bi} style={{ marginBottom: 14 }}>
-          {block.group != null && block.indices.length > 1 && (
+          {isSuper && (
             <div className="row" style={{ gap: 8, marginBottom: 6 }}>
               <span className="tag tag-super">⚡ Superset · {plan.exercises[block.indices[0]].supersetKind === 'same-unit' ? 'same machine' : 'antagonist'}</span>
               <span className="muted" style={{ fontSize: 12 }}>alternate the moves, then rest</span>
             </div>
           )}
-          <div className="card" style={{ borderColor: block.group != null && block.indices.length > 1 ? 'var(--gold)' : undefined, padding: 0 }}>
+          {complete && (
+            <button className="card done-bar" style={{ marginBottom: 6 }} onClick={() => toggleReopen(bi)}>
+              <span className="done-check">✓</span>
+              <span style={{ flex: 1, textAlign: 'left', fontWeight: 600 }}>Done — tap to collapse</span>
+              <span className="muted" style={{ fontSize: 12 }}>▲</span>
+            </button>
+          )}
+          <div className="card" style={{ borderColor: isSuper ? 'var(--gold)' : undefined, padding: 0 }}>
             {block.indices.map((exIdx, k) => {
               const pe = plan.exercises[exIdx]
               const meta = EXERCISES_BY_ID[pe.exerciseId]
-              const showLoad = meta?.loadBasis !== 'bodyweight' && pe.kind !== 'conditioning'
+              const entry = loadEntryFor(pe.exerciseId)
+              const showLoad = entry.mode !== 'bodyweight' && pe.kind !== 'conditioning'
               const isCalib = pe.sets.some((s) => s.calibration)
               const gif = gifFor(pe.exerciseId)
               const photoSrc = machinePhoto(pe.equipmentId)
+              const repNote = pe.kind !== 'conditioning' ? repMeaning(pe.exerciseId) : null
+              const showHowTo = showLoad && (entry.mode === 'per-hand' || entry.mode === 'one-dumbbell' || entry.mode === 'per-side' || entry.mode === 'bar-total' || pe.equipmentId === 'hoist-hd3000')
+              const repsHeader = pe.kind === 'conditioning' ? 'Min/Rnds' : meta?.timed ? 'Sec' : meta?.perSide ? 'Reps/side' : 'Reps'
               return (
                 <div key={exIdx} style={{ padding: 14, borderTop: k > 0 ? '1px dashed var(--edge)' : undefined }}>
                   <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -197,10 +342,21 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                         </div>
                       </div>
                     </div>
-                    {pe.kind !== 'conditioning' && (
-                      <span className="tag" style={{ flexShrink: 0 }}>{repLabel(pe, pe.sets.find((s) => !s.warmup)?.reps ?? [0, 0])} · {Math.round(pe.restSeconds / 15) * 15 / 60 >= 1 ? `${(pe.restSeconds / 60).toFixed(1)}m` : `${pe.restSeconds}s`} rest</span>
-                    )}
+                    <div className="center-col" style={{ gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+                      {pe.kind !== 'conditioning' && (
+                        <span className="tag">{repLabel(pe, pe.sets.find((s) => !s.warmup)?.reps ?? [0, 0])} · {Math.round(pe.restSeconds / 15) * 15 / 60 >= 1 ? `${(pe.restSeconds / 60).toFixed(1)}m` : `${pe.restSeconds}s`} rest</span>
+                      )}
+                      {pe.modeGrip && (
+                        <span className="tag" style={{ color: 'var(--sky)', borderColor: '#33637a' }}>
+                          {pe.modeGrip === 'vertical' ? '⭿' : '⭤'} {pe.modeGrip} handles
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {meta?.attachment && (
+                    <div className="attach-line">🔗 <b>Attachment:</b> {meta.attachment}</div>
+                  )}
 
                   {photoSrc && (
                     <div className="row" style={{ gap: 10, marginTop: 10, alignItems: 'center' }}>
@@ -216,6 +372,8 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                     </div>
                   )}
                   {pe.cues && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>💡 {pe.cues}</div>}
+                  {repNote && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>🔁 <b style={{ color: 'var(--text)' }}>Counting reps:</b> {repNote}</div>}
+                  {showHowTo && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>⚖️ <b style={{ color: 'var(--text)' }}>Logging weight:</b> {entry.howTo}</div>}
 
                   {/* why this weight — the engine's recommendation reason */}
                   {showLoad && pe.rationale && (
@@ -225,6 +383,7 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                           ≈ Estimate
                         </span>
                       )}
+                      {pe.sets.find((s) => !s.warmup)?.load != null && <b style={{ color: 'var(--text)' }}>{loadLabel(pe, pe.sets.find((s) => !s.warmup)!.load)} — </b>}
                       {pe.rationale}
                     </div>
                   )}
@@ -232,26 +391,37 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
                   {/* set table */}
                   <div style={{ marginTop: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 8, fontSize: 11, color: 'var(--text-dim)', padding: '0 2px 4px', fontWeight: 700 }}>
-                      <span>#</span><span>{showLoad ? 'Weight' : 'Type'}</span><span>{pe.kind === 'conditioning' ? 'Min/Rnds' : 'Reps'}</span><span>RIR</span><span>✓</span>
+                      <span>#</span><span>{showLoad ? (entry.unit === 'lb' ? 'Weight' : entry.unit) : 'Type'}</span><span>{repsHeader}</span><span>RIR</span><span>✓</span>
                     </div>
-                    {active.logs[exIdx].map((s, setIdx) => (
-                      <div key={setIdx} className={`set-row ${s.done ? 'done' : ''}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{s.warmup ? 'W' : pe.sets.filter((_, j) => j <= setIdx && !pe.sets[j].warmup).length}</span>
-                        {showLoad ? (
-                          <input className="pill-input" inputMode="numeric" value={s.load ?? ''} placeholder={loadLabel(pe, pe.sets[setIdx]?.load ?? null)}
-                            onChange={(e) => updateSet(exIdx, setIdx, { load: e.target.value === '' ? null : Number(e.target.value) })} />
-                        ) : (
-                          <span className="muted" style={{ fontSize: 12, textAlign: 'center' }}>BW</span>
-                        )}
-                        <input className="pill-input" inputMode="numeric" value={s.reps}
-                          onChange={(e) => updateSet(exIdx, setIdx, { reps: Number(e.target.value) || 0 })} />
-                        <input className="pill-input" inputMode="numeric" value={s.rir ?? ''} placeholder="–"
-                          aria-label="Reps in reserve" title="RIR — reps in reserve (how many more you could do)"
-                          onChange={(e) => updateSet(exIdx, setIdx, { rir: e.target.value === '' ? null : Number(e.target.value) })} />
-                        <button className="btn btn-sm" style={s.done ? { background: 'var(--moss)', color: '#10240c', borderColor: '#4c7a3f' } : undefined}
-                          onClick={() => markDone(exIdx, setIdx)}>{s.done ? '✓' : ''}</button>
-                      </div>
-                    ))}
+                    {active.logs[exIdx].map((s, setIdx) => {
+                      const why = !s.done ? blockReason(pe, s) : null
+                      const rx = pe.sets[setIdx]
+                      return (
+                        <div key={setIdx} className={`set-row ${s.done ? 'done' : ''}`} style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{s.warmup ? 'W' : pe.sets.filter((_, j) => j <= setIdx && !pe.sets[j].warmup).length}</span>
+                          {showLoad ? (
+                            <div>
+                              <NumberCell decimals label={`Weight (${entry.unit})`}
+                                value={s.load != null && Number.isFinite(s.load) ? entry.toInput(s.load) : null}
+                                placeholder={rx?.load != null ? String(entry.toInput(rx.load)) : '0'}
+                                onCommit={(v) => updateSet(exIdx, setIdx, { load: v == null ? null : entry.fromInput(v) })} />
+                              {entry.mode === 'per-side' && s.load != null && Number.isFinite(s.load) && (
+                                <div className="muted" style={{ fontSize: 10, textAlign: 'center', marginTop: 2 }}>= {s.load} lb total</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="muted" style={{ fontSize: 12, textAlign: 'center' }}>BW</span>
+                          )}
+                          <NumberCell label={repsHeader} value={s.reps}
+                            onCommit={(v) => updateSet(exIdx, setIdx, { reps: v ?? 0 })} />
+                          <NumberCell label="Reps in reserve" value={s.rir} placeholder="–"
+                            onCommit={(v) => updateSet(exIdx, setIdx, { rir: v })} />
+                          <button className="btn btn-sm" disabled={!!why} title={why ?? undefined}
+                            style={s.done ? { background: 'var(--moss)', color: '#10240c', borderColor: '#4c7a3f' } : undefined}
+                            onClick={() => markDone(exIdx, setIdx)}>{s.done ? '✓' : ''}</button>
+                        </div>
+                      )
+                    })}
                   </div>
 
                   {/* swap / alternatives */}
@@ -271,7 +441,8 @@ export function WorkoutPlayer({ profile }: { profile: Profile }) {
             })}
           </div>
         </div>
-      ))}
+        )
+      })}
 
       <button className="btn btn-primary btn-block" style={{ marginTop: 4 }} onClick={finish}>🏆 Finish quest</button>
 

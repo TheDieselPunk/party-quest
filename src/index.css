@@ -163,3 +163,33 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); outl
 @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .fade-in { animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes rest-sheet-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+/* rest timer: slides up over the bottom of the workout player */
+.rest-sheet {
+  position: fixed; left: 0; right: 0; z-index: 45;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  max-width: 640px; margin: 0 auto; padding: 0 12px;
+  animation: rest-sheet-up .25s cubic-bezier(.2,.8,.3,1);
+}
+
+/* a finished exercise/superset collapses to this slim bar (like the warm-up row) */
+.done-bar {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 10px 14px; margin-bottom: 10px; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+  border-color: #4c7a3f;
+}
+.done-check {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--moss); color: #10240c; font-weight: 900; font-size: 15px;
+  box-shadow: 0 0 0 3px #6fae5f33;
+}
+
+/* which cable attachment to clip on */
+.attach-line {
+  margin-top: 10px; font-size: 13px; padding: 7px 10px; border-radius: 10px;
+  border: 1px solid #33637a; background: #5aa6c914; color: var(--text);
+}
+.attach-line b { color: var(--sky); }

@@ -1,12 +1,13 @@
 import type {
-  Exercise, Muscle, PrescribedExercise, PrescribedSet, Profile, WorkoutPlan,
+  Exercise, LocationId, Muscle, PrescribedExercise, PrescribedSet, Profile, WorkoutPlan,
 } from '../domain/types'
 import { EQUIPMENT_BY_ID, modeOf } from '../data/equipment'
 import { EXERCISES_BY_ID, exercisesForLocation } from '../data/exercises'
 import { dayForIndex, type Slot } from './templates'
 import {
-  repPrescription, setsForExercise, setWorkSeconds,
+  repPrescriptionForProfile, setsForExercise, setWorkSeconds,
   SUPERSET_TRANSITION_SECONDS, CONDITIONING_ROUND_SECONDS,
+  EXERCISE_CHANGEOVER_SECONDS, WARMUP_BLOCK_SECONDS, WARMUP_SET_REST_SECONDS, TIMED_HOLD_SECONDS,
 } from './params'
 import { recommendLoad, snapLoad, type HistoryIndex } from './weight'
 import { findObjective } from '../domain/objectives'
@@ -18,6 +19,8 @@ export interface GenerateOptions {
   /** Latest performance per exercise id, for progression. */
   history?: HistoryIndex
   now?: number
+  /** Train at the other location just for this session (else profile.location). */
+  location?: LocationId
 }
 
 // --- internal working shape -------------------------------------------------
@@ -25,6 +28,8 @@ interface Picked {
   exercise: Exercise
   role: 'primary' | 'accessory'
   targetMuscle: Muscle
+  /** From an optional template slot (arms/calves extras) — first to go on a tight day. */
+  optional?: boolean
 }
 
 const MAX_EXERCISES = 9
@@ -113,14 +118,15 @@ function buildPrescribed(
   poolIds: Set<string>,
 ): PrescribedExercise {
   const ex = picked.exercise
-  const rx = repPrescription(profile.goal, ex.repClass)
+  const rx = repPrescriptionForProfile(profile, ex.repClass)
   const nSets = setsForExercise(ex.repClass, profile.experience, picked.role)
   const rec = recommendLoad(ex, profile.experience, rx.reps, profile.rirTarget, history[ex.id])
 
+  const reps: [number, number] = ex.kind === 'conditioning' ? [1, 1] : ex.timed ? TIMED_HOLD_SECONDS : rx.reps
   const sets: PrescribedSet[] = []
   for (let i = 0; i < nSets; i++) {
     sets.push({
-      reps: ex.kind === 'conditioning' ? [1, 1] : rx.reps,
+      reps,
       load: rec.load,
       calibration: rec.calibration,
     })
@@ -136,6 +142,7 @@ function buildPrescribed(
     modeId: ex.modeId,
     modeName: mode?.name,
     modeSetup: mode?.setup,
+    modeGrip: mode?.grip,
     kind: ex.kind,
     targetMuscle: picked.targetMuscle,
     muscles: ex.muscles,
@@ -234,46 +241,74 @@ function reorderForSupersets(list: PrescribedExercise[]): PrescribedExercise[] {
 }
 
 // --- time estimation & fitting ---------------------------------------------
+function setSeconds(pe: PrescribedExercise, reps: [number, number]): number {
+  const ex = EXERCISES_BY_ID[pe.exerciseId]
+  return setWorkSeconds(reps, { perSide: ex?.perSide, timed: ex?.timed })
+}
+
 function exerciseSeconds(pe: PrescribedExercise): number {
   if (pe.kind === 'conditioning') return pe.sets.length * CONDITIONING_ROUND_SECONDS
   let t = 0
   for (const s of pe.sets) {
-    const work = setWorkSeconds(s.reps)
-    t += work + (s.warmup ? 45 : pe.restSeconds)
+    t += setSeconds(pe, s.reps) + (s.warmup ? WARMUP_SET_REST_SECONDS : pe.restSeconds)
   }
   return t
 }
 
-export function estimateSessionSeconds(list: PrescribedExercise[]): number {
+/**
+ * Realistic wall-clock estimate for a session: every set's work + rest, a
+ * changeover for each station (or superset pair) you move to, and — when
+ * `warmupBlock` — the general warm-up before the first lift.
+ */
+export function estimateSessionSeconds(list: PrescribedExercise[], opts: { warmupBlock?: boolean } = {}): number {
   const seen = new Set<number>()
-  let total = 0
+  let total = opts.warmupBlock ? WARMUP_BLOCK_SECONDS : 0
   for (const pe of list) {
     if (pe.supersetGroup != null && pe.transitionSeconds != null) {
       if (seen.has(pe.supersetGroup)) continue
       seen.add(pe.supersetGroup)
       const partners = list.filter((x) => x.supersetGroup === pe.supersetGroup)
       const rounds = Math.max(...partners.map((x) => x.sets.filter((s) => !s.warmup).length))
-      const workPerRound = partners.reduce((sum, x) => sum + setWorkSeconds(x.sets[0]?.reps ?? [10, 10]) + (x.transitionSeconds ?? 0), 0)
+      const workPerRound = partners.reduce((sum, x) => sum + setSeconds(x, x.sets.find((s) => !s.warmup)?.reps ?? [10, 10]) + (x.transitionSeconds ?? 0), 0)
       const rest = Math.max(...partners.map((x) => x.restSeconds))
       const warmSecs = partners.reduce((sum, x) =>
-        sum + x.sets.filter((s) => s.warmup).reduce((a, s) => a + setWorkSeconds(s.reps) + 45, 0), 0)
-      total += rounds * (workPerRound + rest) + warmSecs
+        sum + x.sets.filter((s) => s.warmup).reduce((a, s) => a + setSeconds(x, s.reps) + WARMUP_SET_REST_SECONDS, 0), 0)
+      total += EXERCISE_CHANGEOVER_SECONDS + rounds * (workPerRound + rest) + warmSecs
     } else {
-      total += exerciseSeconds(pe)
+      total += EXERCISE_CHANGEOVER_SECONDS + exerciseSeconds(pe)
     }
   }
   return total
 }
 
-function fitToTime(list: PrescribedExercise[], targetMinutes: number): PrescribedExercise[] {
+/** After dropping a superset member, its lone partner reverts to straight sets. */
+function unpairOrphans(list: PrescribedExercise[], dropped: PrescribedExercise): void {
+  if (dropped.supersetGroup == null) return
+  const partners = list.filter((pe) => pe.supersetGroup === dropped.supersetGroup)
+  if (partners.length >= 2) return
+  for (const pe of partners) {
+    pe.supersetGroup = undefined
+    pe.supersetKind = undefined
+    pe.transitionSeconds = undefined
+  }
+}
+
+function fitToTime(
+  list: PrescribedExercise[],
+  targetMinutes: number,
+  warmupBlock: boolean,
+  optionalExtras: Set<PrescribedExercise> = new Set(),
+): PrescribedExercise[] {
   const target = targetMinutes * 60
+  const estimate = (l: PrescribedExercise[]) => estimateSessionSeconds(l, { warmupBlock })
   let result = [...list]
 
   // Trim while too long. Shave accessory sets BEFORE dropping whole movements,
   // so every muscle still gets some volume (protects e.g. core, which sorts
-  // last). Main compounds keep their prescribed sets.
+  // last). Main compounds keep their prescribed sets unless the budget is too
+  // short even for them alone.
   let guard = 40
-  while (estimateSessionSeconds(result) > target * 1.05 && guard-- > 0) {
+  while (estimate(result) > target * 1.05 && guard-- > 0) {
     // a) shave a set from the last non-main-compound exercise with spare sets
     const shave = [...result].reverse().find(
       (pe) => !isMainCompound(pe) && pe.sets.filter((s) => !s.warmup).length > 2,
@@ -283,12 +318,40 @@ function fitToTime(list: PrescribedExercise[], targetMinutes: number): Prescribe
       shave.sets.splice(idx, 1)
       continue
     }
-    // b) only then drop the lowest-priority accessory single (from the end)
-    const dropIdx = [...result].reverse().findIndex(
-      (pe) => pe.supersetGroup == null && pe.kind !== 'conditioning' && !isMainCompound(pe),
-    )
+    // b) only then drop the lowest-priority accessory (from the end): the
+    // template's optional extras (arms/calves) before anything an objective
+    // asked for; a single before half of a superset (whose partner then
+    // carries on as straight sets).
+    const droppable = (pe: PrescribedExercise) => pe.kind !== 'conditioning' && !isMainCompound(pe)
+    const tiers: ((pe: PrescribedExercise) => boolean)[] = [
+      (pe) => optionalExtras.has(pe) && pe.supersetGroup == null,
+      (pe) => optionalExtras.has(pe),
+      (pe) => pe.supersetGroup == null,
+      () => true,
+    ]
+    let dropIdx = -1
+    for (const tier of tiers) {
+      dropIdx = [...result].reverse().findIndex((pe) => droppable(pe) && tier(pe))
+      if (dropIdx >= 0) break
+    }
     if (dropIdx >= 0) {
-      result.splice(result.length - 1 - dropIdx, 1)
+      const [dropped] = result.splice(result.length - 1 - dropIdx, 1)
+      unpairOrphans(result, dropped)
+      continue
+    }
+    // c) short session: main lifts give up their 3rd set (from the end)…
+    const shaveMain = [...result].reverse().find(
+      (pe) => pe.kind !== 'conditioning' && pe.sets.filter((s) => !s.warmup).length > 2,
+    )
+    if (shaveMain) {
+      const idx = shaveMain.sets.map((s) => !s.warmup).lastIndexOf(true)
+      shaveMain.sets.splice(idx, 1)
+      continue
+    }
+    // d) …and finally the lowest-priority lift goes, keeping at least three.
+    if (result.length > 3) {
+      const [dropped] = result.splice(result.length - 1, 1)
+      unpairOrphans(result, dropped)
       continue
     }
     break
@@ -296,7 +359,7 @@ function fitToTime(list: PrescribedExercise[], targetMinutes: number): Prescribe
 
   // Grow while too short (add working sets, capped).
   guard = 40
-  while (estimateSessionSeconds(result) < target * 0.9 && guard-- > 0) {
+  while (estimate(result) < target * 0.9 && guard-- > 0) {
     const grow = result.find((pe) => {
       const working = pe.sets.filter((s) => !s.warmup).length
       const cap = isMainCompound(pe) ? 5 : pe.kind === 'conditioning' ? 6 : 4
@@ -320,11 +383,12 @@ export function generateWorkout(profile: Profile, options: GenerateOptions = {})
   const busy = options.busy ?? true
   const history = options.history ?? {}
   const dayIndex = options.dayIndex ?? profile.dayIndex
+  const location = options.location ?? profile.location
 
   // Pool: exercises whose equipment is present at the location, minus avoided.
   const avoidMuscles = new Set(profile.avoidMuscles)
   const avoidPatterns = new Set(profile.avoidPatterns)
-  const pool = exercisesForLocation(profile.location).filter(
+  const pool = exercisesForLocation(location).filter(
     (ex) => !avoidPatterns.has(ex.pattern) &&
       !ex.muscles.some((m) => m.role === 'primary' && avoidMuscles.has(m.muscle)),
   )
@@ -335,7 +399,7 @@ export function generateWorkout(profile: Profile, options: GenerateOptions = {})
   // How many conditioning finishers to append. Kept separate from the strength
   // slots so the exercise cap can't crowd them out (important for fat loss).
   let condCount = 0
-  if (profile.goal === 'fatloss') condCount = profile.cardio === 'high' ? 2 : 1
+  if (profile.goals.includes('fatloss')) condCount = profile.cardio === 'high' ? 2 : 1
   else if (profile.cardio !== 'none') condCount = 1
 
   // Select strength exercises for the day's slots (within-session variety).
@@ -347,7 +411,7 @@ export function generateWorkout(profile: Profile, options: GenerateOptions = {})
     const ex = pickForSlot(slot, pool, used)
     if (!ex) continue
     used.add(ex.id)
-    picks.push({ exercise: ex, role: slot.role, targetMuscle: primaryMuscle(ex, slot.muscle) })
+    picks.push({ exercise: ex, role: slot.role, targetMuscle: primaryMuscle(ex, slot.muscle), optional: slot.optional })
   }
 
   // Objective-driven accessories (posture pulls, loaded carries).
@@ -367,15 +431,16 @@ export function generateWorkout(profile: Profile, options: GenerateOptions = {})
 
   // Prescribe sets/reps/rest/load.
   let prescribed = picks.map((pk) => buildPrescribed(pk, profile, history, poolIds))
+  const optionalExtras = new Set(prescribed.filter((_, i) => picks[i].optional))
 
   addWarmup(prescribed, profile)
   applySupersets(prescribed, busy)
   prescribed = reorderForSupersets(prescribed)
-  prescribed = fitToTime(prescribed, profile.sessionMinutes)
+  prescribed = fitToTime(prescribed, profile.sessionMinutes, profile.warmup, optionalExtras)
   // supersets may have been split by trimming; re-tidy ordering
   prescribed = reorderForSupersets(prescribed)
 
-  const estMinutes = Math.round(estimateSessionSeconds(prescribed) / 60)
+  const estMinutes = Math.round(estimateSessionSeconds(prescribed, { warmupBlock: profile.warmup }) / 60)
 
   return {
     id: crypto.randomUUID(),

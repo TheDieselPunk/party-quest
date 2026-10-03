@@ -11,7 +11,7 @@ import {
 } from '../engine'
 import { EXERCISES_BY_ID } from '../data/exercises'
 import { EQUIPMENT_BY_ID, modeOf } from '../data/equipment'
-import { repPrescription, recommendLoad } from '../engine'
+import { repPrescriptionForProfile, recommendLoad } from '../engine'
 import { queuePush, stampNow } from '../cloud/sync'
 
 // --- profiles ---------------------------------------------------------------
@@ -168,7 +168,7 @@ export async function swapExercise(
   const alt = EXERCISES_BY_ID[altId]
   if (!alt) return active
   const history = buildHistoryIndex(await sessionsFor(profile.id))
-  const rx = repPrescription(profile.goal, alt.repClass)
+  const rx = repPrescriptionForProfile(profile, alt.repClass)
   const original = active.plan.exercises[exerciseIndex]
   const nSets = active.logs[exerciseIndex].filter((s) => !s.warmup).length || original.sets.length
   const rec = recommendLoad(alt, profile.experience, rx.reps, profile.rirTarget, history[alt.id])
@@ -183,6 +183,7 @@ export async function swapExercise(
     modeId: alt.modeId,
     modeName: mode?.name,
     modeSetup: mode?.setup,
+    modeGrip: mode?.grip,
     kind: alt.kind,
     targetMuscle: original.targetMuscle,
     muscles: alt.muscles,

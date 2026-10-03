@@ -21,6 +21,8 @@ export type HistoryIndex = Record<string, LastPerf>
 /** Round a desired load to the nearest achievable value for its equipment. */
 export function snapLoad(equipmentId: string, desired: number): number {
   const eq = EQUIPMENT_BY_ID[equipmentId]
+  // Never let a NaN/Infinity (e.g. a corrupt logged weight) through as a load.
+  if (!Number.isFinite(desired)) desired = eq?.minLoad ?? eq?.fixedLoads?.[0] ?? 0
   if (!eq) return Math.round(desired)
 
   if (eq.fixedLoads && eq.fixedLoads.length) {
@@ -74,8 +76,9 @@ export function recommendLoad(
     return { load: null, calibration: false, reason: 'bodyweight / self-selected resistance' }
   }
 
-  // First time: estimate from baseline scaled by experience, mark to calibrate.
-  if (!last || last.load == null) {
+  // First time (or unusable history): estimate from baseline scaled by
+  // experience, mark to calibrate.
+  if (!last || last.load == null || !Number.isFinite(last.load) || last.load <= 0) {
     const est = snapLoad(exercise.equipmentId, exercise.baseLoad * EXPERIENCE_LOAD_FACTOR[experience])
     return {
       load: est,
@@ -121,11 +124,14 @@ export function buildHistoryIndex(
       if (index[ex.exerciseId]) continue // keep the most recent only
       const working = ex.sets.filter((s) => s.done && !s.warmup)
       if (!working.length) continue
-      const loads = working.map((s) => s.load).filter((v): v is number => v != null)
+      // Skip junk values (NaN from a bad keystroke, 0) so one corrupt set can't
+      // poison every future recommendation for this exercise.
+      const loads = working.map((s) => s.load).filter((v): v is number => v != null && Number.isFinite(v) && v > 0)
+      const lastRir = working[working.length - 1]?.rir
       index[ex.exerciseId] = {
         load: loads.length ? Math.max(...loads) : null,
-        repsPerSet: working.map((s) => s.reps),
-        rir: working[working.length - 1]?.rir ?? null,
+        repsPerSet: working.map((s) => (Number.isFinite(s.reps) ? s.reps : 0)),
+        rir: lastRir != null && Number.isFinite(lastRir) ? lastRir : null,
       }
     }
   }

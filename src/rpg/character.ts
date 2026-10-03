@@ -1,5 +1,6 @@
 import type { Attribute, Character, CompletedSession } from '../domain/types'
 import { ALL_ATTRIBUTES, MUSCLE_TO_ATTRIBUTE } from '../domain/types'
+import { tonnage } from '../data/loadEntry'
 
 // ---------------------------------------------------------------------------
 // The game layer. Training volume feeds six attributes mapped to muscle groups,
@@ -70,6 +71,8 @@ export interface SessionRewards {
   totalXp: number
   prs: PrResult[]
   levelUps: LevelUp[]
+  /** External weight moved this session (dumbbells ×2 hands, Smith incl. bar, per-side reps ×2). */
+  lifted: number
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -134,7 +137,7 @@ export function applySession(prev: Character, session: CompletedSession): Sessio
   // XP by type from their duration, feeding the conditioning/endurance stats.
   const minutes = (session.durationSeconds ?? 0) / 60
   const blocks = Math.max(1, Math.ceil(minutes / 10))
-  if (session.type === 'run') {
+  if (session.type === 'run' || session.type === 'cardio') {
     add('grit', blocks * XP_ENDURANCE_PER_10MIN)
   } else if (session.type === 'ruck') {
     add('grit', blocks * 8)
@@ -172,5 +175,8 @@ export function applySession(prev: Character, session: CompletedSession): Sessio
     lastSessionDate: session.date,
   }
 
-  return { character, xpGained: gained, totalXp: ALL_ATTRIBUTES.reduce((s, a) => s + gained[a], 0), prs, levelUps }
+  return {
+    character, xpGained: gained, totalXp: ALL_ATTRIBUTES.reduce((s, a) => s + gained[a], 0), prs, levelUps,
+    lifted: tonnage(session.exercises),
+  }
 }

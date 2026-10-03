@@ -5,6 +5,7 @@ import { levelFromXp, characterLevel } from '../rpg/character'
 import { splitDays } from '../engine'
 import { enabledObjectives, weeksUntil, effectiveTargetDate, OBJECTIVE_META } from '../domain/objectives'
 import { EXERCISES_BY_ID } from '../data/exercises'
+import { loadEntryFor, repUnit, tonnage } from '../data/loadEntry'
 
 // ---------------------------------------------------------------------------
 // Builds the "Adventurer's Log": a structured Markdown summary the user hands
@@ -16,10 +17,10 @@ const GOAL_LABEL: Record<string, string> = {
   strength: 'Gain Strength', muscle: 'Build Muscle', fatloss: 'Fat Loss', other: 'Other',
 }
 
-function fmtSet(reps: number, load: number | null, rir: number | null): string {
-  const w = load == null ? 'BW' : `${load}`
+function fmtSet(exerciseId: string, reps: number, load: number | null, rir: number | null): string {
+  const w = load == null || !Number.isFinite(load) ? 'BW' : loadEntryFor(exerciseId).format(load)
   const r = rir == null ? '' : ` @${rir}RIR`
-  return `${w}×${reps}${r}`
+  return `${w}×${reps}${repUnit(exerciseId) !== 'reps' ? ` ${repUnit(exerciseId)}` : ''}${r}`
 }
 
 function dateStr(ts: number): string {
@@ -63,7 +64,8 @@ export function buildCoachExport(
   // --- Profile -------------------------------------------------------------
   lines.push('## Profile', '')
   lines.push(`- **Adventurer:** ${profile.name} (${profile.characterName}) — Character Level ${characterLevel(character)}`)
-  lines.push(`- **Goal:** ${GOAL_LABEL[profile.goal]}${profile.goal === 'other' && profile.goalOther ? ` — ${profile.goalOther}` : ''}`)
+  const goalNames = profile.goals.map((g) => GOAL_LABEL[g]).join(' + ')
+  lines.push(`- **Goal:** ${goalNames}${profile.goals.includes('other') && profile.goalOther ? ` — ${profile.goalOther}` : ''}${profile.goals.length > 1 ? ` (${GOAL_LABEL[profile.goal]} drives rep ranges/volume)` : ''}`)
   lines.push(`- **Experience:** ${profile.experience}`)
   lines.push(`- **Frequency:** ${profile.frequency}×/week · **Session length:** ${profile.sessionMinutes} min`)
   lines.push(`- **Focus:** ${profile.focus ?? 'balanced'} · **Location:** ${profile.location}`)
@@ -146,6 +148,7 @@ export function buildCoachExport(
 
   // --- Recent sessions -----------------------------------------------------
   lines.push('## Recent sessions', '')
+  lines.push('_Weights: dumbbells are per hand (“lb/hand”, one dumbbell); Smith machine is plates per side plus the 25 lb bar (total shown); barbells are total incl. the bar; machines are the stack number. Unilateral moves are reps per side._', '')
   const recent = [...sessions].sort((a, b) => b.date - a.date).slice(0, 6)
   if (!recent.length) lines.push('_No sessions logged yet._', '')
   for (const s of recent) {
@@ -158,9 +161,11 @@ export function buildCoachExport(
     for (const ex of s.exercises) {
       const working = ex.sets.filter((set) => set.done && !set.warmup)
       if (!working.length) continue
-      const setStr = working.map((set) => fmtSet(set.reps, set.load, set.rir)).join(', ')
+      const setStr = working.map((set) => fmtSet(ex.exerciseId, set.reps, set.load, set.rir)).join(', ')
       lines.push(`- **${ex.name}:** ${setStr}`)
     }
+    const lifted = tonnage(s.exercises)
+    if (lifted > 0) lines.push(`- _Total lifted: ${lifted.toLocaleString()} lb${s.durationSeconds ? ` in ${Math.round(s.durationSeconds / 60)} min` : ''}_`)
     lines.push('')
   }
 
@@ -171,7 +176,7 @@ export function buildCoachExport(
     lines.push('| Exercise | Best (load×reps) | est. 1RM |', '|---|---|---|')
     for (const [exId, b] of bests.sort((a, c) => c[1].est1rm - a[1].est1rm).slice(0, 12)) {
       const name = EXERCISES_BY_ID[exId]?.name ?? exId
-      lines.push(`| ${name} | ${b.load}×${b.reps} | ${Math.round(b.est1rm)} |`)
+      lines.push(`| ${name} | ${fmtSet(exId, b.reps, b.load, null)} | ${Math.round(b.est1rm)}${loadEntryFor(exId).mode === 'per-hand' ? ' per hand' : ''} |`)
     }
     lines.push('')
   }

@@ -2,13 +2,16 @@ import { ATTRIBUTE_LABEL } from '../domain/types'
 import type { SessionRewards } from '../rpg/character'
 
 export function RewardsModal({ rewards, onClose }: { rewards: SessionRewards; onClose: () => void }) {
-  const { prs, levelUps, totalXp } = rewards
+  const { prs, levelUps, totalXp, lifted } = rewards
   return (
     <div className="toast-wrap" style={{ background: '#0009', pointerEvents: 'auto' }}>
       <div className="levelup" style={{ maxWidth: 380, width: '100%' }}>
         <div style={{ fontSize: 40 }}>🏆</div>
         <h2 style={{ margin: '4px 0 2px', color: 'var(--gold-soft)' }}>Quest Complete!</h2>
         <div className="muted" style={{ fontSize: 13 }}>+{totalXp} XP earned</div>
+        {lifted > 0 && (
+          <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6 }}>🏋️ {lifted.toLocaleString()} lb lifted</div>
+        )}
 
         {levelUps.length > 0 && (
           <div style={{ marginTop: 14 }}>

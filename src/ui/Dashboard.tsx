@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { PlannedSession, Profile } from '../domain/types'
+import type { LocationId, PlannedSession, Profile } from '../domain/types'
 import { ALL_ATTRIBUTES, ATTRIBUTE_LABEL } from '../domain/types'
 import { useCharacter, useSessions, useActive } from '../store/hooks'
 import { useSession } from '../store/session'
 import { dayForIndex, weeklyVolumeTargets, volumeFromSessions, recentSessions, planWeek, behindHeadlines } from '../engine'
 import { characterLevel, levelFromXp } from '../rpg/character'
+import type { SessionRewards } from '../rpg/character'
 import { startWorkout } from '../db/repo'
+import { LogCardio } from './LogCardio'
+import { RewardsModal } from './Rewards'
 import { Bar, Screen } from './common'
 
 const KIND_ICON: Record<string, string> = { run: '🏃', ruck: '🎒', mobility: '🧘' }
@@ -18,7 +21,10 @@ export function Dashboard({ profile }: { profile: Profile }) {
   const active = useActive(profile.id)
   const setPending = useSession((s) => s.setPendingGuided)
   const [busy, setBusy] = useState(true)
+  const [location, setLocation] = useState<LocationId>(profile.location)
   const [starting, setStarting] = useState(false)
+  const [loggingCardio, setLoggingCardio] = useState(false)
+  const [cardioRewards, setCardioRewards] = useState<SessionRewards | null>(null)
 
   const nextDay = dayForIndex(profile, profile.dayIndex)
   const targets = weeklyVolumeTargets(profile)
@@ -39,7 +45,7 @@ export function Dashboard({ profile }: { profile: Profile }) {
 
   async function begin() {
     setStarting(true)
-    await startWorkout(profile, { busy })
+    await startWorkout(profile, { busy, location })
     navigate('/workout')
   }
 
@@ -94,7 +100,7 @@ export function Dashboard({ profile }: { profile: Profile }) {
         <div className="eyebrow">Today’s Quest</div>
         <h2 style={{ margin: '2px 0 8px', fontSize: 20 }}>{nextDay.label}</h2>
         <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-          A {profile.sessionMinutes}-minute session tailored to your {profile.location === 'gym' ? 'apartment gym' : 'home studio'},
+          A {profile.sessionMinutes}-minute session tailored to your {location === 'gym' ? 'apartment gym' : 'home studio'},
           with weights based on your history.
         </div>
 
@@ -107,23 +113,41 @@ export function Dashboard({ profile }: { profile: Profile }) {
         ) : (
           <>
             <div className="center-col" style={{ gap: 6, marginBottom: 12, alignItems: 'stretch' }}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Gym is busy right now?</span>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Training at the gym or at home today?</span>
               <div className="chips">
-                <button className="chip" aria-pressed={busy} onClick={() => setBusy(true)}>Busy</button>
-                <button className="chip" aria-pressed={!busy} onClick={() => setBusy(false)}>Quiet</button>
+                <button className="chip" aria-pressed={location === 'gym'} onClick={() => setLocation('gym')}>🏋️ Gym</button>
+                <button className="chip" aria-pressed={location === 'studio'} onClick={() => setLocation('studio')}>🏠 Home</button>
               </div>
-              <span className="muted" style={{ fontSize: 12 }}>
-                {busy
-                  ? 'Supersets stay on one machine, so you finish and free it up faster.'
-                  : 'Supersets can pair across two machines for efficiency.'}
-              </span>
             </div>
+            {location === 'gym' && (
+              <div className="center-col" style={{ gap: 6, marginBottom: 12, alignItems: 'stretch' }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Gym is busy right now?</span>
+                <div className="chips">
+                  <button className="chip" aria-pressed={busy} onClick={() => setBusy(true)}>Busy</button>
+                  <button className="chip" aria-pressed={!busy} onClick={() => setBusy(false)}>Quiet</button>
+                </div>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  {busy
+                    ? 'Supersets stay on one machine, so you finish and free it up faster.'
+                    : 'Supersets can pair across two machines for efficiency.'}
+                </span>
+              </div>
+            )}
             <button className="btn btn-primary btn-block" disabled={starting} onClick={begin}>
               {starting ? 'Rolling…' : '⚔️ Start quest'}
             </button>
           </>
         )}
+        <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 10 }} onClick={() => setLoggingCardio(true)}>
+          🔥 Log cardio you already did
+        </button>
       </div>
+
+      {loggingCardio && (
+        <LogCardio profile={profile} onClose={() => setLoggingCardio(false)}
+          onDone={(r) => { setLoggingCardio(false); setCardioRewards(r) }} />
+      )}
+      {cardioRewards && <RewardsModal rewards={cardioRewards} onClose={() => setCardioRewards(null)} />}
 
       {/* Off-gym plan for today */}
       {todayExtras.length > 0 && (

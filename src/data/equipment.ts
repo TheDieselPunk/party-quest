@@ -41,6 +41,7 @@ export const EQUIPMENT: Equipment[] = [
     increment: 5, // 2.5 lb plates available → 5 lb per jump
     minLoad: 45,
     maxLoad: 500,
+    barWeight: 45,
     notes: '45 lb bar. Preferred over the Smith for back squats. "Load" = total including the bar.',
   },
   {
@@ -52,6 +53,7 @@ export const EQUIPMENT: Equipment[] = [
     increment: 5,
     minLoad: 25,
     maxLoad: 150,
+    barWeight: 25,
     notes: '~25 lb EZ bar for curls and skull-crushers. "Load" = total including the bar.',
   },
 
@@ -62,24 +64,30 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 10, // 215 lb stack of 10 lb plates; no 5 lb add-on (only the leg press has that)
-    minLoad: 10,
-    maxLoad: 210,
+    // Stepped weight stack — not a flat increment (David measured it):
+    // 10,25,40,55,70,85,100,115,135,155,175,195,215 lb.
+    fixedLoads: [10, 25, 40, 55, 70, 85, 100, 115, 135, 155, 175, 195, 215],
+    // Each press arm has BOTH a vertical and a horizontal pair of handles, and
+    // Hoist's own instructions say to "grasp either pair" in every mode — so the
+    // grip below is our recommendation per mode (with the reason), not a rule.
     modes: [
       {
         id: 'chest-press',
         name: 'Vertical Chest Press',
-        setup: 'Seat so handles sit at mid-chest; back flat, drive handles straight forward, control the return.',
+        setup: 'Pull the pin behind the seat back and set it to the CHEST position; set seat height so the handles line up with mid-chest. Grab the HORIZONTAL handles (palms down, like a bench press) — more chest work. Press out without locking the elbows, then lower slowly.',
+        grip: 'horizontal',
       },
       {
         id: 'incline-press',
         name: 'Incline Chest Press',
-        setup: 'One-handed angle adjust the press arm to incline; raise the seat so handles start at lower-chest height for upper-chest emphasis.',
+        setup: 'Pull the pin behind the seat back and set it to the INCLINE position; set seat height so the handles start around upper chest. Grab the HORIZONTAL handles (palms down) — biases the upper chest. Press up without locking the elbows, lower slowly.',
+        grip: 'horizontal',
       },
       {
         id: 'shoulder-press',
         name: 'Shoulder Press',
-        setup: 'Lower the seat so handles start at shoulder height; press overhead without shrugging, stop just short of lockout.',
+        setup: 'Pull the pin behind the seat back and set it to the SHOULDER position; use the range-of-motion pin above the seat so the handles start at shoulder height. Grab the VERTICAL handles (palms facing each other) — easier on the shoulders than a palms-forward press. Press overhead without shrugging; stop just short of lockout.',
+        grip: 'vertical',
       },
     ],
   },
@@ -89,9 +97,9 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'stack',
     isMachine: true,
-    increment: 10, // 225 lb stack of 10 lb plates; no 5 lb add-on
-    minLoad: 10,
-    maxLoad: 220,
+    // Stepped weight stack — not a flat increment (David measured it 2026-10-02):
+    // 20,35,50,65,80,95,110,125,145,165,185,205,225 lb.
+    fixedLoads: [20, 35, 50, 65, 80, 95, 110, 125, 145, 165, 185, 205, 225],
     modes: [
       {
         id: 'lat-pulldown',
@@ -231,10 +239,14 @@ export const EQUIPMENT: Equipment[] = [
     locations: ['gym'],
     loadType: 'smith',
     isMachine: true,
-    increment: 5, // 2.5 lb plates available → 5 lb per jump
-    minLoad: 0,
-    maxLoad: 540,
-    notes: '7° guided bar (25 lb bar) with adjustable safety stops. "Load" = plates added. Per David: NOT for back squats — use the free barbell for those.',
+    increment: 5, // 2.5 lb plates per side → 5 lb per jump in the total
+    minLoad: 25, // the empty bar
+    maxLoad: 565,
+    barWeight: 25,
+    // Stored load = TOTAL lifted (both sides' plates + the 25 lb bar) — matches the
+    // imported history (e.g. 115 = a 45 on each side + bar). The logger has you
+    // enter the plates on ONE side and does the math (see data/loadEntry.ts).
+    notes: '7° guided bar (25 lb bar) with adjustable safety stops. Log plates on ONE side; the app adds both sides + the bar. Per David: NOT for back squats — use the free barbell for those.',
   },
   {
     id: 'bench-adj',
@@ -275,6 +287,8 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'heavy-bag', name: 'Heavy Bag', locations: ['gym'], loadType: 'bodyweight', isMachine: false },
   { id: 'band', name: 'Resistance Bands', locations: ['studio'], loadType: 'band', isMachine: false },
   { id: 'barre', name: 'Ballet Barre', locations: ['studio'], loadType: 'bodyweight', isMachine: false },
+  { id: 'yoga-mat', name: 'Yoga Mat', locations: ['studio'], loadType: 'bodyweight', isMachine: false, notes: 'Floor cushioning for mat-based core, glute, and mobility work.' },
+  { id: 'pilates-ring', name: 'Pilates Ring', locations: ['studio'], loadType: 'bodyweight', isMachine: false, notes: 'Nintendo Ring-Con or a standard fitness circle — isometric squeeze resistance for inner thighs, chest, and core.' },
 ]
 
 export const EQUIPMENT_BY_ID: Record<string, Equipment> = Object.fromEntries(

@@ -78,6 +78,22 @@ export function repPrescription(goal: Goal, repClass: RepClass): RepPrescription
   return table[repClass]
 }
 
+/**
+ * Rep/rest prescription honoring multiple selected goals: the primary goal
+ * (goals[0]) still drives the rep range as before, but a non-primary
+ * "strength" pick nudges rest longer (more recovery for the next heavy
+ * effort) since Strength's whole edge over Muscle/Fat Loss is rest length.
+ */
+export function repPrescriptionForProfile(
+  profile: { goal: Goal; goals: Goal[] },
+  repClass: RepClass,
+): RepPrescription {
+  const rx = repPrescription(profile.goal, repClass)
+  const secondaryStrength = profile.goals.length > 1 && profile.goal !== 'strength' && profile.goals.includes('strength')
+  if (!secondaryStrength) return rx
+  return { ...rx, restSeconds: Math.round(rx.restSeconds * 1.2) }
+}
+
 /** Load scaling for a first-time estimate relative to the intermediate baseLoad. */
 export const EXPERIENCE_LOAD_FACTOR: Record<Experience, number> = {
   beginner: 0.6,
@@ -85,11 +101,34 @@ export const EXPERIENCE_LOAD_FACTOR: Record<Experience, number> = {
   advanced: 1.25,
 }
 
-/** Estimated seconds to perform one working set (reps + setup). */
-export function setWorkSeconds(reps: [number, number]): number {
+// --- Session timing ---------------------------------------------------------
+// Calibrated against David's real logged sessions (12 full-body workouts,
+// Jul–Aug 2026): ~19 working + ~4 warm-up sets over 6–8 exercises took a median
+// ~83 min including a 10-min cardio warm-up — i.e. ~3.2 min per set all-in.
+// The old model only counted reps + prescribed rest, so it ran ~30% short (a
+// "60-min" plan took ~78). The real-world overheads it was missing are below.
+
+/** Estimated seconds to perform one set: reps at ~3 s each + getting set (grip, brace, log it). */
+export function setWorkSeconds(reps: [number, number], opts: { perSide?: boolean; timed?: boolean } = {}): number {
   const avg = (reps[0] + reps[1]) / 2
-  return Math.round(avg * 3) + 15
+  const work = opts.timed ? avg : avg * 3 // timed holds/carries prescribe seconds, not reps
+  return Math.round(work * (opts.perSide ? 2 : 1)) + SET_SETUP_SECONDS + (opts.perSide ? 10 : 0)
 }
+
+/** Getting into position, re-racking, and logging each set. */
+export const SET_SETUP_SECONDS = 25
+
+/** Moving to the next station: walk over, adjust the seat/pin/pulley, load plates, find dumbbells. */
+export const EXERCISE_CHANGEOVER_SECONDS = 75
+
+/** The general warm-up before lifting (easy cardio + dynamic mobility). */
+export const WARMUP_BLOCK_SECONDS = 5 * 60
+
+/** Rest after a ramp-up (warm-up) set — short, it's not a working set. */
+export const WARMUP_SET_REST_SECONDS = 60
+
+/** Timed holds/carries (plank, farmer's carry) are prescribed in seconds. */
+export const TIMED_HOLD_SECONDS: [number, number] = [30, 45]
 
 /** Short rest taken between the two movements of a superset. */
 export const SUPERSET_TRANSITION_SECONDS = 20

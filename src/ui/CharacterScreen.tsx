@@ -3,7 +3,8 @@ import { ALL_ATTRIBUTES, ATTRIBUTE_LABEL, ATTRIBUTE_BLURB } from '../domain/type
 import { useCharacter, useSessions } from '../store/hooks'
 import { characterLevel, levelFromXp, levelProgress } from '../rpg/character'
 import { EXERCISES_BY_ID } from '../data/exercises'
-import { Bar, Screen } from './common'
+import { loadEntryFor } from '../data/loadEntry'
+import { Bar, Screen, fmtLoad } from './common'
 
 export function CharacterScreen({ profile }: { profile: Profile }) {
   const character = useCharacter(profile.id)
@@ -52,7 +53,7 @@ export function CharacterScreen({ profile }: { profile: Profile }) {
           {bests.map(([id, b]) => (
             <div key={id} className="row" style={{ justifyContent: 'space-between', padding: '4px 0' }}>
               <span style={{ fontSize: 14 }}>{EXERCISES_BY_ID[id]?.name ?? id}</span>
-              <span className="muted" style={{ fontSize: 13 }}>{b.load}×{b.reps} · ~{Math.round(b.est1rm)} lb</span>
+              <span className="muted" style={{ fontSize: 13 }}>{fmtLoad(id, b.load)} × {b.reps} · ~{Math.round(b.est1rm)} {loadEntryFor(id).mode === 'per-hand' ? 'lb/hand' : 'lb'}</span>
             </div>
           ))}
         </div>

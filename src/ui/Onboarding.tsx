@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Experience, Goal, LocationId, MuscleFocus } from '../domain/types'
 import { createProfile } from '../db/repo'
 import { useSession } from '../store/session'
-import { Chips, Field } from './common'
+import { Chips, Field, GOAL_LABEL } from './common'
 
 const GOALS: { value: Goal; label: string }[] = [
   { value: 'strength', label: 'Gain Strength' },
@@ -31,8 +31,15 @@ export function Onboarding({ first }: { first: boolean }) {
   const setCurrent = useSession((s) => s.setCurrent)
 
   const [characterName, setName] = useState('')
-  const [goal, setGoal] = useState<Goal>('muscle')
+  const [goals, setGoals] = useState<Goal[]>(['muscle'])
   const [goalOther, setGoalOther] = useState('')
+
+  function toggleGoal(g: Goal) {
+    setGoals((prev) => {
+      if (prev.includes(g)) return prev.length > 1 ? prev.filter((x) => x !== g) : prev
+      return [...prev, g]
+    })
+  }
   const [experience, setExperience] = useState<Experience>('intermediate')
   const [frequency, setFrequency] = useState(3)
   const [sessionMinutes, setSessionMinutes] = useState(60)
@@ -45,9 +52,9 @@ export function Onboarding({ first }: { first: boolean }) {
     const profile = await createProfile({
       name: characterName.trim() || 'Adventurer',
       characterName: characterName.trim() || 'Adventurer',
-      goal, goalOther: goal === 'other' ? goalOther.trim() : undefined,
+      goal: goals[0], goals, goalOther: goals.includes('other') ? goalOther.trim() : undefined,
       experience, frequency, sessionMinutes, focus, location,
-      cardio: goal === 'fatloss' ? 'moderate' : 'none',
+      cardio: goals.includes('fatloss') ? 'moderate' : 'none',
     })
     setCurrent(profile.id)
     navigate('/')
@@ -66,10 +73,21 @@ export function Onboarding({ first }: { first: boolean }) {
           <input value={characterName} onChange={(e) => setName(e.target.value)} placeholder="e.g. Thorin, Aria…" />
         </Field>
 
-        <Field label="Goal">
-          <Chips options={GOALS} value={goal} onChange={setGoal} />
+        <Field label="Goal (pick one or more)">
+          <div className="chips">
+            {GOALS.map((g) => (
+              <button key={g.value} type="button" className="chip" aria-pressed={goals.includes(g.value)} onClick={() => toggleGoal(g.value)}>
+                {g.label}
+              </button>
+            ))}
+          </div>
+          {goals.length > 1 && (
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+              <b>{GOAL_LABEL[goals[0]]}</b> drives your rep ranges; the rest add light touches (e.g. Fat Loss adds a cardio finisher).
+            </div>
+          )}
         </Field>
-        {goal === 'other' && (
+        {goals.includes('other') && (
           <Field label="Describe your goal">
             <input value={goalOther} onChange={(e) => setGoalOther(e.target.value)} placeholder="e.g. tone up for a wedding" />
           </Field>
