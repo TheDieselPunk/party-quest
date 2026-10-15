@@ -193,3 +193,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); outl
   border: 1px solid #33637a; background: #5aa6c914; color: var(--text);
 }
 .attach-line b { color: var(--sky); }
+
+/* a person's secret code, shown big and copyable */
+.code-card {
+  text-align: center; padding: 14px 12px; border-radius: 12px;
+  background: #0000003a; border: 1px dashed var(--gold);
+}
+.code-text {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 18px; font-weight: 700; color: var(--gold-soft);
+  letter-spacing: .02em; word-break: break-word; user-select: all;
+}

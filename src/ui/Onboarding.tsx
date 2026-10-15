@@ -4,6 +4,8 @@ import type { Experience, Goal, LocationId, MuscleFocus } from '../domain/types'
 import { createProfile } from '../db/repo'
 import { useSession } from '../store/session'
 import { Chips, Field, GOAL_LABEL } from './common'
+import { CloudLink } from './CloudLink'
+import { cloudEnabled } from '../cloud/api'
 
 const GOALS: { value: Goal; label: string }[] = [
   { value: 'strength', label: 'Gain Strength' },
@@ -62,6 +64,13 @@ export function Onboarding({ first }: { first: boolean }) {
 
   return (
     <div className="screen fade-in">
+      {/* New phone, existing adventurer: restore instead of starting over. */}
+      {first && cloudEnabled && (
+        <>
+          <CloudLink name="" variant="restore" />
+          <div className="muted" style={{ textAlign: 'center', fontSize: 12, margin: '4px 0 14px' }}>— or start a new character —</div>
+        </>
+      )}
       <div className="eyebrow">{first ? 'Form your party' : 'New adventurer'}</div>
       <h1 style={{ marginTop: 0 }}>Create your character</h1>
       <p className="muted" style={{ marginTop: -6 }}>

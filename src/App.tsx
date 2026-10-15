@@ -2,9 +2,7 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useProfiles, useCurrentProfile } from './store/hooks'
 import { useSession } from './store/session'
-import { useAuth } from './cloud/auth'
 import { initSync, clearSync, useSyncStatus } from './cloud/sync'
-import { Auth } from './ui/Auth'
 import { Onboarding } from './ui/Onboarding'
 import { Dashboard } from './ui/Dashboard'
 import { WeekView } from './ui/WeekView'
@@ -44,19 +42,17 @@ export default function App() {
   const profiles = useProfiles()
   const profile = useCurrentProfile()
   const setCurrent = useSession((s) => s.setCurrent)
-  const offline = useSession((s) => s.offline)
-  const setOffline = useSession((s) => s.setOffline)
+  const cloudCode = useSession((s) => s.cloudCode)
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { session, ready, cloudEnabled } = useAuth()
   const syncStatus = useSyncStatus()
 
-  // Start/stop cloud sync with the auth session.
-  const userId = session?.user?.id
+  // Cloud sync follows this phone's secret code. It runs in the background —
+  // the app never waits on it (or on any login) to show your data.
   useEffect(() => {
-    if (userId) void initSync(userId)
+    if (cloudCode) void initSync(cloudCode)
     else clearSync()
-  }, [userId])
+  }, [cloudCode])
 
   // Auto-select a profile if none is chosen but some exist (e.g. after delete).
   useEffect(() => {
@@ -65,25 +61,17 @@ export default function App() {
     }
   }, [profiles, profile, setCurrent])
 
-  // Cloud sign-in gate: show it when cloud is configured, we're not signed in,
-  // and the user hasn't chosen to continue offline.
-  if (cloudEnabled && !ready) {
-    return <div className="app-shell"><div className="screen muted">Summoning…</div></div>
-  }
-  if (cloudEnabled && !session && !offline) {
-    return <div className="app-shell"><Auth onOffline={() => setOffline(true)} /></div>
-  }
-  // Signed in: wait for the first cloud pull so returning users don't flash the
-  // onboarding screen before their data restores.
-  if (cloudEnabled && session && !syncStatus.initialSyncDone) {
-    return <div className="app-shell"><div className="screen muted">Restoring your progress…</div></div>
-  }
-
   if (profiles === undefined || profile === undefined) {
     return <div className="app-shell"><div className="screen muted">Summoning…</div></div>
   }
 
-  // No profiles yet → force onboarding.
+  // A brand-new phone that was just linked with a secret code: wait for the
+  // first pull (it times out on its own) instead of flashing onboarding.
+  if (profiles.length === 0 && cloudCode && !syncStatus.initialSyncDone) {
+    return <div className="app-shell"><div className="screen muted">Restoring your progress…</div></div>
+  }
+
+  // No profiles yet → onboarding (which also offers "I already have a code").
   if (profiles.length === 0) {
     return (
       <div className="app-shell">

@@ -11,6 +11,7 @@ import { startWorkout } from '../db/repo'
 import { LogCardio } from './LogCardio'
 import { RewardsModal } from './Rewards'
 import { Bar, Screen } from './common'
+import { cloudEnabled } from '../cloud/api'
 
 const KIND_ICON: Record<string, string> = { run: '🏃', ruck: '🎒', mobility: '🧘' }
 
@@ -20,6 +21,9 @@ export function Dashboard({ profile }: { profile: Profile }) {
   const sessions = useSessions(profile.id) ?? []
   const active = useActive(profile.id)
   const setPending = useSession((s) => s.setPendingGuided)
+  const cloudCode = useSession((s) => s.cloudCode)
+  const cloudNudgeDismissed = useSession((s) => s.cloudNudgeDismissed)
+  const dismissCloudNudge = useSession((s) => s.dismissCloudNudge)
   const [busy, setBusy] = useState(true)
   const [location, setLocation] = useState<LocationId>(profile.location)
   const [starting, setStarting] = useState(false)
@@ -76,6 +80,20 @@ export function Dashboard({ profile }: { profile: Profile }) {
           ))}
         </div>
       </div>
+
+      {/* One-time nudge: back up with a secret code (replaces the old email login). */}
+      {cloudEnabled && !cloudCode && !cloudNudgeDismissed && (
+        <div className="card" style={{ marginTop: 14, borderColor: 'var(--sky)' }}>
+          <div className="eyebrow" style={{ color: 'var(--sky)' }}>☁️ Back up your progress</div>
+          <div style={{ fontSize: 13, margin: '4px 0 10px' }}>
+            No more logins — set up your secret code (takes 10 seconds) to back up and see your partner in the Party.
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => navigate('/settings')}>Set up my code</button>
+            <button className="btn btn-ghost btn-sm" onClick={dismissCloudNudge}>Not now</button>
+          </div>
+        </div>
+      )}
 
       {/* Behind-pace / adaptation nudges (only when there's something to catch up on) */}
       {behind.length > 0 && (

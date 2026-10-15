@@ -28,3 +28,7 @@ dist-ssr
 
 # local env
 .env
+
+# Cloudflare worker local state / secrets
+.wrangler
+.dev.vars

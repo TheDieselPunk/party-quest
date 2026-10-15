@@ -1,0 +1,18 @@
+# Party Quest sync API — a tiny Cloudflare Worker + D1 database (free plan,
+# never pauses). Deploy: `npm run deploy` from this folder after `wrangler login`.
+name = "party-quest-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Browser origins allowed to call the API (the GitHub Pages site + local dev).
+ALLOWED_ORIGINS = "https://thedieselpunk.github.io,http://localhost:5173,http://localhost:4173"
+
+# INVITE_CODE (needed to create a new secret code) is a secret, not a var:
+#   echo <code> | npx wrangler secret put INVITE_CODE
+# For local `wrangler dev`, put INVITE_CODE=... in worker/.dev.vars (gitignored).
+
+[[d1_databases]]
+binding = "DB"
+database_name = "party-quest"
+database_id = "7dd53f5a-0e11-484b-b2e4-df17f747df7e"

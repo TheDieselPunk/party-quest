@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react'
 import { db, type OutboxItem } from '../db/db'
-import { supabase, cloudEnabled } from './supabase'
+import { apiPull, apiPush, cloudEnabled, type CloudRecord, type Kind, type PullResult } from './api'
 import type { Character, CompletedSession, Profile } from '../domain/types'
 
 // ---------------------------------------------------------------------------
-// Local-first cloud sync. Dexie remains the working store (offline-capable);
-// this layer pushes local changes up and pulls remote changes down, resolving
-// conflicts by last-write-wins on `updatedAt`. A persisted outbox survives
-// offline periods and reloads.
+// Local-first cloud sync. Dexie remains the working store (the app never waits
+// on the cloud); this layer pushes local changes up and pulls remote changes
+// down, resolving conflicts by last-write-wins on `updatedAt`. A persisted
+// outbox survives offline periods, reloads, and the cloud being unreachable.
+// Identity is the person's secret code — no accounts, nothing to log into.
 // ---------------------------------------------------------------------------
 
-type Kind = 'profiles' | 'characters' | 'sessions'
-let currentUserId: string | null = null
+let currentCode: string | null = null
 let initialSyncDone = false
+let lastError = false
 
 /** Stamp a record with the current time for last-write-wins ordering. */
 export function stampNow<T extends object>(o: T): T {
@@ -21,15 +22,27 @@ export function stampNow<T extends object>(o: T): T {
 }
 
 // --- status (for the Settings sync indicator) ------------------------------
-export interface SyncStatus { pending: number; online: boolean; signedIn: boolean; initialSyncDone: boolean }
+export interface SyncStatus {
+  pending: number
+  online: boolean
+  linked: boolean
+  initialSyncDone: boolean
+  /** The last attempt to reach the cloud failed (it may be down or unreachable). */
+  unreachable: boolean
+}
 const listeners = new Set<(s: SyncStatus) => void>()
 async function currentStatus(): Promise<SyncStatus> {
-  return { pending: await db.outbox.count(), online: navigator.onLine, signedIn: !!currentUserId, initialSyncDone }
+  return {
+    pending: await db.outbox.count(), online: navigator.onLine, linked: !!currentCode,
+    initialSyncDone, unreachable: lastError,
+  }
 }
 function emitStatus(): void { void currentStatus().then((s) => listeners.forEach((l) => l(s))) }
 
 export function useSyncStatus(): SyncStatus {
-  const [s, setS] = useState<SyncStatus>({ pending: 0, online: navigator.onLine, signedIn: !!currentUserId, initialSyncDone })
+  const [s, setS] = useState<SyncStatus>({
+    pending: 0, online: navigator.onLine, linked: !!currentCode, initialSyncDone, unreachable: lastError,
+  })
   useEffect(() => {
     const l = (x: SyncStatus) => setS(x)
     listeners.add(l)
@@ -43,126 +56,131 @@ export function useSyncStatus(): SyncStatus {
 }
 
 // --- row helpers -----------------------------------------------------------
-async function readRow(kind: Kind, rowId: string): Promise<Profile | Character | CompletedSession | undefined> {
+async function readRow(kind: Kind, rowId: string): Promise<CloudRecord | undefined> {
   if (kind === 'profiles') return db.profiles.get(rowId)
   if (kind === 'characters') return db.characters.get(rowId)
   return db.sessions.get(rowId)
 }
 
-function payloadFor(kind: Kind, rowId: string, row: Profile | Character | CompletedSession, userId: string): Record<string, unknown> {
-  const updated_at = new Date((row as { updatedAt?: number }).updatedAt ?? Date.now()).toISOString()
-  if (kind === 'profiles') return { id: rowId, user_id: userId, data: row, updated_at }
-  if (kind === 'characters') return { profile_id: rowId, user_id: userId, data: row, updated_at }
-  const s = row as CompletedSession
-  return { id: rowId, user_id: userId, profile_id: s.profileId, date: s.date, data: s, updated_at }
-}
-
-async function writeLocal(kind: Kind, data: Profile | Character | CompletedSession): Promise<void> {
+async function writeLocal(kind: Kind, data: CloudRecord): Promise<void> {
   if (kind === 'profiles') await db.profiles.put(data as Profile)
   else if (kind === 'characters') await db.characters.put(data as Character)
   else await db.sessions.put(data as CompletedSession)
 }
 
-async function pushItem(item: OutboxItem): Promise<void> {
-  if (!supabase || !currentUserId) throw new Error('not signed in')
-  if (item.op === 'delete') {
-    const col = item.kind === 'characters' ? 'profile_id' : 'id'
-    const { error } = await supabase.from(item.kind).delete().eq(col, item.rowId)
-    if (error) throw error
-    return
-  }
-  const row = await readRow(item.kind, item.rowId)
-  if (!row) return // row removed locally before push; nothing to upsert
-  const { error } = await supabase.from(item.kind).upsert(payloadFor(item.kind, item.rowId, row, currentUserId))
-  if (error) throw error
-}
+const updatedAtOf = (r: CloudRecord | undefined) => (r as { updatedAt?: number } | undefined)?.updatedAt
 
-/** Queue a cloud write. Pushes immediately when possible; otherwise persists to the outbox. */
-export function queuePush(kind: Kind, rowId: string, op: 'upsert' | 'delete' = 'upsert'): void {
-  if (!cloudEnabled || !currentUserId) return
+// --- push ------------------------------------------------------------------
+async function enqueue(kind: Kind, rowId: string, op: 'upsert' | 'delete'): Promise<void> {
+  if (!cloudEnabled || !currentCode) return
   const item: OutboxItem = { key: `${kind}:${rowId}`, kind, rowId, op, ts: Date.now() }
-  void (async () => {
-    if (navigator.onLine) {
-      try { await pushItem(item); await db.outbox.delete(item.key); emitStatus(); return } catch { /* fall through to outbox */ }
-    }
-    await db.outbox.put(item)
-    emitStatus()
-  })()
+  await db.outbox.put(item)
+  emitStatus()
+  scheduleFlush()
 }
 
+/** Queue a cloud write; it's sent with the next (debounced) flush. */
+export function queuePush(kind: Kind, rowId: string, op: 'upsert' | 'delete' = 'upsert'): void {
+  void enqueue(kind, rowId, op)
+}
+
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleFlush(): void {
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = setTimeout(() => { flushTimer = null; void flushOutbox() }, 400)
+}
+
+let flushing = false
+let flushAgain = false
+const CHUNK = 50
+
+/** Send everything in the outbox, in chunks. Stops quietly if the cloud is unreachable. */
 export async function flushOutbox(): Promise<void> {
-  if (!cloudEnabled || !currentUserId || !navigator.onLine) return
-  const items = await db.outbox.orderBy('ts').toArray()
-  for (const item of items) {
-    try { await pushItem(item); await db.outbox.delete(item.key) }
-    catch { break } // likely offline again; retry on next trigger
+  if (!cloudEnabled || !currentCode || !navigator.onLine) return
+  if (flushing) { flushAgain = true; return }
+  flushing = true
+  flushAgain = false
+  const code = currentCode
+  try {
+    const items = await db.outbox.orderBy('ts').toArray()
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const batch = items.slice(i, i + CHUNK)
+      const upserts: Parameters<typeof apiPush>[1] = []
+      const deletes: Parameters<typeof apiPush>[2] = []
+      for (const item of batch) {
+        if (item.op === 'delete') { deletes.push({ kind: item.kind, id: item.rowId }); continue }
+        const row = await readRow(item.kind, item.rowId)
+        if (row) upserts.push({ kind: item.kind, id: item.rowId, data: row, updatedAt: updatedAtOf(row) ?? item.ts })
+      }
+      await apiPush(code, upserts, deletes)
+      // Clear only what we sent — an item re-queued mid-flush (newer ts) stays.
+      await db.transaction('rw', db.outbox, async () => {
+        for (const item of batch) {
+          const cur = await db.outbox.get(item.key)
+          if (cur && cur.ts === item.ts) await db.outbox.delete(item.key)
+        }
+      })
+    }
+    lastError = false
+  } catch {
+    lastError = true // offline / cloud down — retried on focus, online, or the next change
+  } finally {
+    flushing = false
+    if (flushAgain && !lastError) scheduleFlush() // something was queued mid-flush
+    emitStatus()
   }
-  emitStatus()
 }
 
 // --- pull + merge ----------------------------------------------------------
-type CloudIndex = Record<Kind, Map<string, number>> // rowId -> cloud updatedAt (ms)
-
-function cloudUpdatedMs(r: { data?: { updatedAt?: number }; updated_at?: string }): number {
-  return r.data?.updatedAt ?? (r.updated_at ? Date.parse(r.updated_at) : 0)
-}
-
-async function pullKind(kind: Kind, userId: string, index: CloudIndex): Promise<void> {
-  if (!supabase) return
-  const { data, error } = await supabase.from(kind).select('*').eq('user_id', userId)
-  if (error || !data) return
-  const idField = kind === 'characters' ? 'profile_id' : 'id'
-  for (const r of data as Array<Record<string, unknown>>) {
-    const rowId = r[idField] as string
-    const obj = r.data as Profile | Character | CompletedSession
-    const cu = cloudUpdatedMs(r as { data?: { updatedAt?: number }; updated_at?: string })
-    index[kind].set(rowId, cu)
-    const local = await readRow(kind, rowId)
-    const lu = (local as { updatedAt?: number } | undefined)?.updatedAt ?? -1
-    if (!local || cu >= lu) await writeLocal(kind, obj)
+async function mergePulled(pulled: PullResult): Promise<Record<Kind, Map<string, number>>> {
+  const index: Record<Kind, Map<string, number>> = { profiles: new Map(), characters: new Map(), sessions: new Map() }
+  for (const kind of ['profiles', 'characters', 'sessions'] as Kind[]) {
+    for (const r of pulled[kind] ?? []) {
+      const cu = updatedAtOf(r.data) ?? r.updatedAt
+      index[kind].set(r.id, cu)
+      const local = await readRow(kind, r.id)
+      if (!local || cu >= (updatedAtOf(local) ?? -1)) await writeLocal(kind, r.data)
+    }
   }
-}
-
-async function pullAll(userId: string): Promise<CloudIndex> {
-  const index: CloudIndex = { profiles: new Map(), characters: new Map(), sessions: new Map() }
-  await Promise.all([
-    pullKind('profiles', userId, index),
-    pullKind('characters', userId, index),
-    pullKind('sessions', userId, index),
-  ])
   return index
 }
 
-/** Push local rows the cloud is missing or that are locally newer (adopt on-device data). */
-async function migrateLocal(index: CloudIndex): Promise<void> {
+/** Queue local rows the cloud is missing or that are locally newer (adopt on-device data). */
+async function queueLocalNewer(index: Record<Kind, Map<string, number>>): Promise<void> {
   const isNewer = (kind: Kind, id: string, updatedAt?: number) => {
     const cu = index[kind].get(id)
     return cu == null || (updatedAt ?? 0) > cu
   }
-  for (const p of await db.profiles.toArray()) if (isNewer('profiles', p.id, p.updatedAt)) queuePush('profiles', p.id)
-  for (const c of await db.characters.toArray()) if (isNewer('characters', c.profileId, c.updatedAt)) queuePush('characters', c.profileId)
-  for (const s of await db.sessions.toArray()) if (isNewer('sessions', s.id, s.updatedAt)) queuePush('sessions', s.id)
+  for (const p of await db.profiles.toArray()) if (isNewer('profiles', p.id, p.updatedAt)) await enqueue('profiles', p.id, 'upsert')
+  for (const c of await db.characters.toArray()) if (isNewer('characters', c.profileId, c.updatedAt)) await enqueue('characters', c.profileId, 'upsert')
+  for (const s of await db.sessions.toArray()) if (isNewer('sessions', s.id, s.updatedAt)) await enqueue('sessions', s.id, 'upsert')
+}
+
+async function syncNow(code: string): Promise<void> {
+  const pulled = await apiPull(code)
+  if (currentCode !== code) return // unlinked/relinked meanwhile
+  const index = await mergePulled(pulled)
+  await queueLocalNewer(index)
+  await flushOutbox()
 }
 
 // --- lifecycle -------------------------------------------------------------
-function onOnline() { void flushOutbox() }
-function onFocus() { void flushOutbox() }
+function onOnline() { if (currentCode) void syncNow(currentCode).catch(() => {}) }
+function onVisible() { if (document.visibilityState === 'visible') void flushOutbox() }
 
-export async function initSync(userId: string): Promise<void> {
-  if (!cloudEnabled || !supabase) return
-  currentUserId = userId
+/** Link this device to a code: pull its backup, then push anything only this phone has. */
+export async function initSync(code: string): Promise<void> {
+  if (!cloudEnabled) return
+  currentCode = code
   initialSyncDone = false
   window.addEventListener('online', onOnline)
-  window.addEventListener('focus', onFocus)
+  document.addEventListener('visibilitychange', onVisible)
   emitStatus()
   try {
-    // Ensure the client has hydrated the session before authenticated reads.
-    await supabase.auth.getSession()
-    const index = await pullAll(userId)
-    await migrateLocal(index)
-    await flushOutbox()
+    await syncNow(code)
+    lastError = false
   } catch {
-    // network hiccup — proceed with local data; sync retries on focus/online
+    lastError = true // cloud unreachable — keep using local data; retries later
   } finally {
     initialSyncDone = true
     emitStatus()
@@ -170,14 +188,15 @@ export async function initSync(userId: string): Promise<void> {
 }
 
 export function clearSync(): void {
-  currentUserId = null
+  currentCode = null
   initialSyncDone = false
+  lastError = false
   window.removeEventListener('online', onOnline)
-  window.removeEventListener('focus', onFocus)
+  document.removeEventListener('visibilitychange', onVisible)
   emitStatus()
 }
 
-/** Pull the latest for the signed-in user (used when opening data-heavy screens). */
+/** Pull the latest for the linked code (e.g. on opening data-heavy screens). */
 export async function pullLatest(): Promise<void> {
-  if (currentUserId) await pullAll(currentUserId)
+  if (currentCode) await syncNow(currentCode)
 }
